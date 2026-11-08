@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07060b">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Extraction</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <!-- HUD en jeu -->
+  <div id="hud" class="hidden">
+    <div id="vignette"></div>
+    <div id="dmgLayer"></div>
+
+    <div id="topLeft">
+      <button id="btnPause" aria-label="Pause">II</button>
+      <div id="hpWrap"><div id="hpFill"></div></div>
+    </div>
+    <div id="topCenter">
+      <div id="objective">Atteins la sortie</div>
+      <div id="floorLabel"></div>
+      <div id="enemyCount"></div>
+      <div id="bossBar" class="hidden">
+        <div id="bossName"></div>
+        <div id="bossTrack"><i id="bossFill"></i></div>
+      </div>
+    </div>
+    <div id="toast"></div>
+    <div id="topRight">
+      <div id="score">0</div>
+      <div id="combo"><span id="comboTxt"></span><div id="comboBar"><i></i></div></div>
+    </div>
+
+    <!-- Réticules de visée (zoom) : point rouge, anneau (fusil à pompe), lunette -->
+    <div id="reticle">
+      <div class="scopeMask"></div>
+      <svg class="scope" viewBox="-100 -100 200 200">
+        <circle r="96" class="scopeRing"/>
+        <path d="M-96 0H-8M8 0H96M0 -96V-8M0 8V96"/>
+        <path class="ticks" d="M-60 -5V5M-40 -4V4M-20 -3V3M20 -3V3M40 -4V4M60 -5V5M-5 20H5M-4 40H4M-5 60H5"/>
+        <circle r="1.6" class="center"/>
+      </svg>
+      <svg class="dot" viewBox="-50 -50 100 100">
+        <circle r="22" class="holo"/>
+        <circle r="2.6" class="center"/>
+      </svg>
+      <svg class="ring" viewBox="-50 -50 100 100">
+        <circle r="34" class="holo thick"/>
+        <circle r="2.6" class="center"/>
+      </svg>
+    </div>
+
+    <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+    <div id="hitmarker">
+      <svg viewBox="-20 -20 40 40"><path d="M-14-14L-6-6M14-14L6-6M-14 14L-6 6M14 14L6 6"/></svg>
+    </div>
+    <div id="popups"></div>
+
+    <div id="ammo"><span id="ammoCur">0</span><span id="ammoMax">/0</span><div id="reloadTxt">RECHARGEMENT</div></div>
+
+    <div id="touch">
+      <div id="joyBase"><div id="joyKnob"></div></div>
+      <button id="btnFireL" aria-label="Tirer (gauche)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>
+      </button>
+      <button id="btnReload" aria-label="Recharger">
+        <svg viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4h-4"/></svg>
+      </button>
+      <button id="btnAim" aria-label="Viser">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.5" class="fill"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+      </button>
+      <button id="btnFire" aria-label="Tirer">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Écran titre -->
+  <div id="screenMenu" class="screen">
+    <div class="title">EXTRACTION</div>
+    <div class="subtitle">Villa · Hôtel · Tour</div>
+    <div class="tapHint">Touche l'écran pour commencer</div>
+    <div class="best" id="bestScore"></div>
+  </div>
+
+  <!-- Choix de l'arme -->
+  <div id="screenSelect" class="screen hidden">
+    <div class="selectTop">
+      <div class="lvlInfo">
+        <div id="lvlName"></div>
+        <div id="lvlBrief"></div>
+      </div>
+      <div id="diffChips"></div>
+    </div>
+    <div class="selectWrap">
+      <div class="selectLeft">
+        <div class="selectHead">Choisis ton arme</div>
+        <div id="weaponGrid"></div>
+      </div>
+      <div class="selectRight">
+        <div id="wName"></div>
+        <div id="wType"></div>
+        <div id="wBars"></div>
+        <div id="wDesc"></div>
+        <button id="btnGo" class="btn">ENTRER</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="screenPause" class="screen hidden">
+    <div class="title small">PAUSE</div>
+    <button id="btnResume" class="btn">REPRENDRE</button>
+    <button id="btnQuit" class="btn ghost">ABANDONNER</button>
+  </div>
+
+  <!-- Tableau des scores -->
+  <div id="screenEnd" class="screen hidden">
+    <div class="endWrap">
+      <div class="endLeft">
+        <div id="endTitle" class="title small"></div>
+        <table id="endTable"></table>
+      </div>
+      <div class="endRight">
+        <div class="endPtsLabel">POINTS</div>
+        <div id="endPoints">0</div>
+        <div id="endBest"></div>
+        <button id="btnAgain" class="btn">REJOUER</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fondu entre les étages -->
+  <div id="fade"><div id="fadeTitle"></div><div id="fadeSub"></div></div>
+
+  <div id="rotate"><div>Tourne ton téléphone<br><span>Le jeu se joue à l'horizontale</span></div></div>
+</div>
+
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
