@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Numéro de version fourni par GitHub (numéro du build) pour pouvoir mettre l'appli à jour.
+def buildNumber = (project.findProperty('versionCode') ?: '1') as Integer
+
+android {
+    namespace 'com.extraction.jeu'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.extraction.jeu'
+        minSdk 26
+        targetSdk 34
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    // Clé créée une seule fois par GitHub puis conservée dans le dépôt :
+    // toutes les versions ont la même signature, on peut donc les installer par-dessus.
+    signingConfigs {
+        release {
+            storeFile file('../extraction.jks')
+            storePassword 'extraction'
+            keyAlias 'extraction'
+            keyPassword 'extraction'
+            storeType 'pkcs12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    // Sert les fichiers du jeu depuis l'APK via une adresse https locale (nécessaire aux modules JavaScript).
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

@@ -1,0 +1,11 @@
+# Three.js est téléchargé au moment de la fabrication de l'APK
+vendor/
+
+# Fichiers générés par la fabrication Android
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/www/
+android/local.properties
+
+__pycache__/
