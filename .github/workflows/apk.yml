@@ -1,0 +1,69 @@
+# Fabrique l'APK Android du jeu à chaque envoi sur la branche main (ou à la demande),
+# puis le publie dans les « Releases » du dépôt.
+name: APK Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Bibliothèque 3D (Three.js 0.170.0)
+        run: |
+          mkdir -p vendor
+          curl -fsSL https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js -o vendor/three.module.js
+
+      - name: Copie du jeu dans l'appli
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r index.html style.css src vendor android/app/src/main/assets/www/
+
+      - name: Clé de signature (créée une seule fois, puis conservée dans le dépôt)
+        run: |
+          if [ ! -f android/extraction.jks ]; then
+            keytool -genkeypair -keystore android/extraction.jks -storetype PKCS12 \
+              -alias extraction -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass extraction -keypass extraction \
+              -dname "CN=Extraction, O=Jeu perso, C=FR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add android/extraction.jks
+            git commit -m "Clé de signature de l'APK"
+            git push
+          fi
+
+      - name: Fabrication de l'APK
+        run: gradle -p android assembleRelease -PversionCode=${{ github.run_number }} --no-daemon --stacktrace
+
+      - name: Nom du fichier
+        run: cp android/app/build/outputs/apk/release/app-release.apk extraction.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extraction-apk
+          path: extraction.apk
+
+      - name: Publication dans les Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v1.0.${{ github.run_number }}" extraction.apk \
+            --title "Extraction v1.0.${{ github.run_number }}" \
+            --notes "APK Android du jeu. Télécharge extraction.apk sur le téléphone puis ouvre-le pour l'installer."
