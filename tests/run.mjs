@@ -1,6 +1,7 @@
 // Lance les tests de logique avec Node : `node tests/run.mjs`
 import { cases, runAll } from './cases.js';
 import './settings.cases.js';
+import './tactics.cases.js';
 
 const { passed, failed } = runAll();
 for (const f of failed) console.error(`ÉCHEC  ${f.name}\n       ${f.error}`);
