@@ -1,10 +1,11 @@
 // Lecture et validation des cartes texte (voir la légende dans levels.js).
 // Logique pure, sans Three.js : sert aux tests automatiques.
+// En plus de la légende de levels.js : « P » est une porte (franchissable) posée par le générateur d'étages.
 
 export const MIN_SPAWN_DIST = 5; // aucun ennemi à moins de 5 cases de l'arrivée sur l'étage
 
 const SOLID = '#Wc';
-const KNOWN = '#W.cSeBDX';
+const KNOWN = '#W.cSeBDXP';
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function parseMap(rows) {
