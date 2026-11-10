@@ -6,6 +6,7 @@ import { $, game, hud, sfx, music, input, save, fmtNum, fmtTime, acc, weaponName
 import { scene, gunHolder, fx, applyTheme, render } from './view.js';
 import { updateCamera } from './combat.js';
 import { buildGunModel, disposeGunModel } from './gunmodel.js';
+import { EXTRA_TYPES, specialists } from './roster.js';
 import { showScreen, showEnd } from '../ui/screens.js';
 import { MIN_SPAWN_DIST } from '../core/grid.js';
 import { t } from '../core/i18n.js';
@@ -75,9 +76,15 @@ export function loadFloor(levelIdx, floorIdx) {
   const types = shuffle([
     ...Array(nHeavy).fill('heavy'), ...Array(nRusher).fill('rusher'), ...Array(count - nHeavy - nRusher).fill('grunt'),
   ], R);
+  // les spécialistes de l'étage prennent la place d'hommes de main
+  for (const special of specialists(levelIdx, floorIdx)) {
+    const i = types.indexOf('grunt');
+    if (i >= 0) types[i] = special;
+  }
   types.forEach((type, i) => {
     const s = spots[i];
-    game.enemies.push(new Enemy(scene, s.x, s.z, Math.floor(R() * 4) * Math.PI / 2, ENEMY_TYPES[type], { hpMul }));
+    const def = ENEMY_TYPES[type] || EXTRA_TYPES[type];
+    game.enemies.push(new Enemy(scene, s.x, s.z, Math.floor(R() * 4) * Math.PI / 2, def, { hpMul }));
   });
   bossKeys.forEach((key, i) => {
     const s = L.bossSpots[i] || spots[count + i];
@@ -135,7 +142,7 @@ function equip(w) {
   gunHolder.add(game.gun);
   game.ws = {
     ammo: w.mag, reloading: false, reloadT: 0, cd: 0, spread: w.spread,
-    kickPitch: 0, kickYaw: 0, gunKick: 0, flashT: 0, reloadAnim: 0,
+    kickPitch: 0, kickYaw: 0, gunKick: 0, flashT: 0,
     ads: false, adsT: 0,
   };
 }
