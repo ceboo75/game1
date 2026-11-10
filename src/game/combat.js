@@ -1,9 +1,10 @@
 // Boucle de jeu : déplacement, visée, tir, dégâts, score et caméra.
 import * as THREE from 'three';
 import { CELL } from '../level.js';
-import { game, hud, sfx, music, input, fmtNum, wrapAngle } from './state.js';
+import { game, hud, sfx, music, input, settings, fmtNum, wrapAngle } from './state.js';
 import { camera, worldFlash, gunHolder, GUN_POS, fx, applyFov } from './view.js';
 import { nextFloor, levelComplete, endRun } from './floor.js';
+import { consumeGyro, autoFire } from './controls.js';
 import { COMBO_WINDOW, HEAD_DMG, comboMult, nextCombo, killPoints } from '../core/score.js';
 import { vibrate } from '../core/platform.js';
 import { t } from '../core/i18n.js';
@@ -11,9 +12,10 @@ import { t } from '../core/i18n.js';
 const PLAYER_SPEED = 5.2;
 const PLAYER_RADIUS = 0.35;
 const EYE = 1.6;
-const LOOK_SENS = 0.0055;           // radians par pixel de glissé
+const LOOK_SENS = 0.0055;           // radians par pixel de glissé, à sensibilité 100 %
+const MAX_PITCH = 1.35;
 const ASSIST_COS = Math.cos(THREE.MathUtils.degToRad(4)); // cône de l'aide à la visée
-const ASSIST_FACTOR = 0.5;          // la visée ralentit de moitié sur un ennemi
+const ASSIST_SLOW = 0.5;            // à force 100 %, la visée ralentit de moitié sur un ennemi
 const ADS_TIME = 0.18;              // durée pour épauler (s)
 const ADS_SPEED = 0.6;              // vitesse de déplacement en visée
 const ADS_POS = new THREE.Vector3(0, -0.115, -0.3);
@@ -45,12 +47,16 @@ export function update(dt) {
   game.stats.time += dt;
   const p = game.player, w = game.weapon, ws = game.ws, L = game.level;
 
-  // visée
+  // visée : glissé du doigt (réglé par les sensibilités et l'aide à la visée), plus le gyroscope s'il est activé
   const assist = aimAssist();
   const look = input.consumeLook();
-  const sens = (LOOK_SENS * (assist ? ASSIST_FACTOR : 1)) / zoomNow(); // visée plus fine quand on zoome
-  p.yaw -= look.dx * sens;
-  p.pitch = THREE.MathUtils.clamp(p.pitch - look.dy * sens, -1.35, 1.35);
+  const zoom = zoomNow();
+  const userSens = settings.sens + (settings.sensAds - settings.sens) * adsK();
+  const slow = assist ? Math.max(0.2, 1 - (1 - ASSIST_SLOW) * settings.assist) : 1;
+  const sens = (LOOK_SENS * userSens * slow) / zoom; // visée plus fine quand on zoome
+  const gyro = consumeGyro();
+  p.yaw += -look.dx * sens + gyro.yaw / zoom;
+  p.pitch = THREE.MathUtils.clamp(p.pitch - look.dy * sens + gyro.pitch / zoom, -MAX_PITCH, MAX_PITCH);
   game.lookSway.x += (THREE.MathUtils.clamp(-look.dx * 0.0006, -0.03, 0.03) - game.lookSway.x) * Math.min(1, dt * 10);
   game.lookSway.y += (THREE.MathUtils.clamp(look.dy * 0.0006, -0.03, 0.03) - game.lookSway.y) * Math.min(1, dt * 10);
 
@@ -66,7 +72,7 @@ export function update(dt) {
   game.flowTimer -= dt;
   if (game.flowTimer <= 0) { game.flowTimer = 0.25; game.flow = L.flowFrom(p.pos.x, p.pos.z); }
 
-  updateWeapon(dt);
+  updateWeapon(dt, input.firing || autoFire(dt));
   for (const e of game.enemies) e.update(dt, game);
   fx.update(dt);
   L.update(dt);
@@ -133,7 +139,8 @@ function aimAssist() {
   return false;
 }
 
-function updateWeapon(dt) {
+/** @param trigger vrai si la détente est pressée (bouton de tir ou tir automatique) */
+function updateWeapon(dt, trigger) {
   const w = game.weapon, ws = game.ws;
   ws.cd -= dt;
 
@@ -167,7 +174,7 @@ function updateWeapon(dt) {
     }
   }
 
-  if (input.firing) {
+  if (trigger) {
     // le fusil à pompe peut tirer en interrompant son rechargement
     if (w.shellReload && ws.reloading && ws.ammo > 0) ws.reloading = false;
     if (!ws.reloading && ws.cd <= 0 && ws.ammo > 0) fire();

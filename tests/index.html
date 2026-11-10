@@ -9,6 +9,7 @@
 <div id="out">Tests en cours...</div>
 <script type="module">
 import { cases, runAll } from './cases.js';
+import './settings.cases.js';
 const res = runAll();
 window.testResult = res;
 document.getElementById('out').innerHTML =

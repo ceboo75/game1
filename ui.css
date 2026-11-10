@@ -1,0 +1,41 @@
+/* Compléments de style chargés après style.css : titre du jeu, écran de réglages, boutons réglables. */
+
+/* Le nom du jeu est long : il doit tenir sur une ligne sur un téléphone à l'horizontale. */
+#screenMenu .title { font-size: clamp(26px, 6.6vw, 84px); letter-spacing: .14em; white-space: nowrap; }
+
+/* ---------- Boutons tactiles réglables (taille et opacité choisies dans les réglages) ---------- */
+#btnFire, #btnReload, #btnAim, #btnFireL {
+  transform: scale(var(--btn-scale, 1)); opacity: var(--btn-opacity, 1);
+}
+#btnFire { transform-origin: 100% 100%; }
+#btnFireL { transform-origin: 0 50%; }
+
+/* ---------- Accès aux réglages depuis l'écran titre ---------- */
+#btnSettings {
+  position: absolute; top: calc(var(--safe-t) + 6px); right: calc(var(--safe-r) + 6px);
+  width: 46px; height: 46px; border-radius: 10px;
+  background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .3);
+  display: flex; align-items: center; justify-content: center;
+}
+#btnSettings svg { width: 60%; height: 60%; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
+
+/* ---------- Écran de réglages ---------- */
+#screenSettings {
+  z-index: 20; justify-content: flex-start; gap: 8px;
+  padding: calc(var(--safe-t) + 8px) var(--safe-r) 12px var(--safe-l);
+  background: rgba(5, 3, 10, .96);
+}
+.setList { width: min(640px, 100%); display: flex; flex-direction: column; gap: 4px; }
+.setGroup {
+  margin-top: 8px; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: var(--cyan);
+}
+.setRow {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 62px; align-items: center; gap: 12px;
+  min-height: 40px; padding: 2px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 14px;
+}
+.setName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setVal { text-align: right; font-variant-numeric: tabular-nums; opacity: .85; }
+.setRow input[type=range] { width: 100%; height: 28px; accent-color: var(--pink); touch-action: pan-x; }
+.setRow input[type=checkbox] { width: 24px; height: 24px; justify-self: end; accent-color: var(--pink); }
+.setFoot { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+.setFoot .btn { min-width: 150px; padding: 10px 18px; font-size: 14px; }

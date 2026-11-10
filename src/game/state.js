@@ -7,6 +7,7 @@ import { Sfx } from '../audio.js';
 import { Music } from '../music.js';
 import { Hud } from '../hud.js';
 import { Save } from '../core/save.js';
+import { normalizeSettings, cleanValue } from '../core/settings.js';
 import { tr, locale } from '../core/i18n.js';
 
 export const params = new URLSearchParams(location.search);
@@ -24,6 +25,13 @@ export const weaponName = w => tr(`weapon.${w.id}`, w.name);
 export const diffName = d => tr(`diff.${d.id}.name`, d.name);
 
 export const save = new Save();
+/** Réglages du joueur (voir core/settings.js). À modifier par setSetting pour qu'ils soient enregistrés. */
+export const settings = save.data.settings = normalizeSettings(save.data.settings);
+export function setSetting(key, value) {
+  settings[key] = cleanValue(key, value);
+  save.write();
+}
+
 export const hud = new Hud();
 export const sfx = new Sfx();
 export const music = new Music(sfx);
@@ -31,8 +39,21 @@ export const music = new Music(sfx);
 export const hooks = { pause() {} };
 export const input = new Input({ onPause: () => hooks.pause() });
 
+const MUSIC_BASE = music.volume; // volumes d'origine, que les réglages viennent atténuer
+const SFX_BASE = 0.7;
+
+/** Applique les volumes choisis par le joueur. Sans effet tant que le son n'a pas démarré. */
+export function applyAudio() {
+  music.volume = MUSIC_BASE * settings.volMusic;
+  if (music.started) {
+    const duck = game.state === 'paused' ? 0.25 : 1; // la musique est atténuée pendant la pause
+    music.out.gain.setTargetAtTime(Math.max(0.0001, music.volume * duck), music.c.currentTime, 0.1);
+  }
+  if (sfx.master) sfx.master.gain.value = SFX_BASE * settings.volSfx;
+}
+
 /** Démarre le son : doit être appelé pendant un geste de l'utilisateur. */
-export function audioOn() { sfx.init(); music.start(); }
+export function audioOn() { sfx.init(); music.start(); applyAudio(); }
 
 export const game = {
   state: 'menu',          // menu | select | play | transition | paused | end
