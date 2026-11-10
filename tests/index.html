@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tests</title>
+<style>body { font: 14px/1.5 monospace; background: #111; color: #ddd; padding: 16px; } .ko { color: #f66; white-space: pre-wrap; } .ok { color: #6f6; }</style>
+</head>
+<body>
+<div id="out">Tests en cours...</div>
+<script type="module">
+import { cases, runAll } from './cases.js';
+const res = runAll();
+window.testResult = res;
+document.getElementById('out').innerHTML =
+  `<div class="${res.failed.length ? 'ko' : 'ok'}">${res.passed} / ${cases.length} tests réussis</div>` +
+  res.failed.map(f => `<div class="ko">ÉCHEC  ${f.name}\n       ${f.error.replace(/</g, '&lt;')}</div>`).join('');
+</script>
+</body>
+</html>

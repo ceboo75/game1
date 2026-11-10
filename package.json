@@ -1,0 +1,9 @@
+{
+  "name": "sutcu-imam-escape",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "smoke": "node tests/smoke.mjs"
+  }
+}
