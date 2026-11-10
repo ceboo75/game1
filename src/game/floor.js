@@ -1,11 +1,11 @@
 // Déroulement d'une partie : bâtiments, étages, transitions, fin de niveau et fin de partie.
 import { Level } from '../level.js';
 import { Enemy } from '../enemies.js';
-import { buildGunModel } from '../weapons.js';
 import { LEVELS, THEMES, ENEMY_TYPES, BOSSES, rng } from '../levels.js';
 import { $, game, hud, sfx, music, input, save, fmtNum, fmtTime, acc, weaponName, diffName } from './state.js';
 import { scene, gunHolder, fx, applyTheme, render } from './view.js';
 import { updateCamera } from './combat.js';
+import { buildGunModel, disposeGunModel } from './gunmodel.js';
 import { showScreen, showEnd } from '../ui/screens.js';
 import { MIN_SPAWN_DIST } from '../core/grid.js';
 import { t } from '../core/i18n.js';
@@ -130,7 +130,7 @@ export function nextFloor() {
 
 function equip(w) {
   game.weapon = w;
-  if (game.gun) gunHolder.remove(game.gun);
+  if (game.gun) { gunHolder.remove(game.gun); disposeGunModel(game.gun); }
   game.gun = buildGunModel(w);
   gunHolder.add(game.gun);
   game.ws = {

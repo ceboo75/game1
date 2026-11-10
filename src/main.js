@@ -5,6 +5,7 @@ import { weaponById } from './weapons.js';
 import { $, params, game, hooks, sfx } from './game/state.js';
 import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
+import { updateViewmodel } from './game/viewmodel.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
 import { initSettings } from './ui/settings.js';
@@ -17,6 +18,12 @@ game.alertNear = alertNear;
 hooks.pause = pause;
 window.game = game; // accès console pour le débogage
 
+/** Une image de jeu : la simulation, puis l'animation de l'arme qui en découle. */
+function tick(dt) {
+  update(dt);
+  updateViewmodel(dt);
+}
+
 // ---------------------------------------------------------------- crochets de test
 game.debug = {
   instant: false, // transitions immédiates (tests automatisés)
@@ -27,7 +34,7 @@ game.debug = {
     game.run.levelIdx = levelIdx;
     startLevel(floorIdx);
   },
-  step: (frames = 1, dt = 1 / 60) => { for (let i = 0; i < frames && game.state === 'play'; i++) update(dt); },
+  step: (frames = 1, dt = 1 / 60) => { for (let i = 0; i < frames && game.state === 'play'; i++) tick(dt); },
   render: () => render(),
   /** Charge chaque étage, le fait tourner quelques secondes et signale tout problème. */
   selfTest: (frames = 120) => {
@@ -104,7 +111,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (game.state === 'play') update(dt);
+  if (game.state === 'play') tick(dt);
   else if (game.state === 'menu' || game.state === 'select') idleCamera(dt);
   else if (game.state === 'transition' && game.ws) updateCamera(0);
   render();
