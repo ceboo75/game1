@@ -137,6 +137,7 @@ export function updateViewmodel(dt) {
     if (clipK >= 0) P.clip.position.y = P.clip.userData.rest.y + 0.06 * (1 - clipK) - 0.05 * clipK;
   }
 
-  gun.position.set(0, Math.sin(st.t * 1.8) * 0.0015 + bump * 0.008 + st.insert * 0.012, 0);
-  gun.rotation.set(0.1 * st.tilt, 0.2 * st.tilt, -0.6 * st.tilt);
+  // pose de rechargement : l'arme remonte vers le centre et bascule pour montrer le puits de chargeur
+  gun.position.set(-0.05 * st.tilt, 0.05 * st.tilt + Math.sin(st.t * 1.8) * 0.0015 + bump * 0.008 + st.insert * 0.012, 0);
+  gun.rotation.set(0.35 * st.tilt, 0.3 * st.tilt, -0.7 * st.tilt);
 }

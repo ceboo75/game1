@@ -315,16 +315,16 @@ export function updateCamera(dt) {
   const k = adsK();
   applyFov(zoomNow());
 
-  ws.reloadAnim += ((ws.reloading ? 1 : 0) - ws.reloadAnim) * Math.min(1, dt * 10);
+  // pose d'ensemble de l'arme ; le rechargement et les pièces mobiles sont animés par viewmodel.js
   const m = p.moving ? 1 - k * 0.7 : 0;
   const sway = 1 - k * 0.8;
   tmp.lerpVectors(GUN_POS, ADS_POS, k); // l'arme remonte au centre quand on épaule
   gunHolder.position.set(
     tmp.x + Math.sin(p.bobT * 0.5) * 0.012 * m + game.lookSway.x * sway,
-    tmp.y - Math.abs(Math.cos(p.bobT * 0.5)) * 0.012 * m - ws.reloadAnim * 0.12 + game.lookSway.y * sway,
+    tmp.y - Math.abs(Math.cos(p.bobT * 0.5)) * 0.012 * m + game.lookSway.y * sway,
     tmp.z + ws.gunKick * 0.05 * (1 - k * 0.5),
   );
-  gunHolder.rotation.set(ws.gunKick * 0.1 * (1 - k * 0.6) - ws.reloadAnim * 0.7, 0, ws.reloadAnim * 0.35);
+  gunHolder.rotation.set(ws.gunKick * 0.1 * (1 - k * 0.6), 0, 0);
   gunHolder.visible = k < 0.85; // en visée complète, seul le réticule reste
 }
 
