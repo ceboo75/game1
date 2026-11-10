@@ -7,6 +7,7 @@ import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
 import { updateViewmodel } from './game/viewmodel.js';
 import { updateAmbience } from './game/ambience.js';
+import { updateDoors, doorState } from './game/doors.js';
 import { applyQuality, frameGate, perfFrame, perfState } from './game/perf.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
@@ -20,8 +21,9 @@ game.alertNear = alertNear;
 hooks.pause = pause;
 window.game = game; // accès console pour le débogage
 
-/** Une image de jeu : la simulation, puis ce qui en découle (animation de l'arme, sons d'ambiance). */
+/** Une image de jeu : les portes, la simulation, puis ce qui en découle (animation de l'arme, sons d'ambiance). */
 function tick(dt) {
+  updateDoors(dt);
   update(dt);
   updateViewmodel(dt);
   updateAmbience(dt);
@@ -30,16 +32,17 @@ function tick(dt) {
 // ---------------------------------------------------------------- crochets de test
 game.debug = {
   instant: false, // transitions immédiates (tests automatisés)
-  start: (weaponId = 'm4', diffId = 'normal', levelIdx = 0, floorIdx = 0) => {
+  start: (weaponId = 'm4', diffId = 'normal', levelIdx = 0, floorIdx = 0, seed = 1) => {
     game.weapon = weaponById(weaponId);
     game.diff = DIFFICULTIES[diffId];
-    newRun();
+    newRun(seed);
     game.run.levelIdx = levelIdx;
     startLevel(floorIdx);
   },
   step: (frames = 1, dt = 1 / 60) => { for (let i = 0; i < frames && game.state === 'play'; i++) tick(dt); },
   render: () => render(),
   perf: () => perfState(),
+  doors: () => doorState(),
   /** Charge chaque étage, le fait tourner quelques secondes et signale tout problème. */
   selfTest: (frames = 120) => {
     const report = { floors: 0, enemies: 0, bosses: 0, maxCalls: 0, maxTriangles: 0, problems: [] };
@@ -52,7 +55,7 @@ game.debug = {
         const bosses = game.enemies.filter(e => e.boss).length;
         const normals = game.enemies.length - bosses;
         if (bosses !== (fl.bosses?.length || 0)) report.problems.push(`${where} : ${bosses} boss au lieu de ${fl.bosses?.length || 0}`);
-        if (!normals) report.problems.push(`${where} : aucun ennemi`);
+        if (normals !== fl.count) report.problems.push(`${where} : ${normals} ennemis au lieu de ${fl.count}`);
         report.enemies += normals;
         report.bosses += bosses;
         for (let i = 0; i < frames; i++) { game.player.health = 100; game.debug.step(1); }

@@ -9,16 +9,19 @@ import { buildGunModel, disposeGunModel } from './gunmodel.js';
 import { EXTRA_TYPES, specialists } from './roster.js';
 import { showScreen, showEnd } from '../ui/screens.js';
 import { MIN_SPAWN_DIST } from '../core/grid.js';
+import { generateFloor } from '../core/floorgen.js';
 import { t } from '../core/i18n.js';
 
 const TOTAL_BOSSES = LEVELS.reduce((n, l) => n + l.floors.reduce((m, f) => m + (f.bosses?.length || 0), 0), 0);
+const MENU_SEED = 1; // l'étage affiché derrière les menus est toujours le même
 
 function newStats() {
   return { kills: 0, bosses: 0, headshots: 0, shots: 0, hits: 0, bestCombo: 0, points: 0, time: 0 };
 }
 
-export function newRun() {
-  game.run = { levelIdx: 0, floorIdx: 0, levelStats: null, weapons: [] };
+/** @param seed graine des étages de la partie ; tirée au hasard si elle n'est pas fournie */
+export function newRun(seed = Math.floor(Math.random() * 0x7fffffff) + 1) {
+  game.run = { levelIdx: 0, floorIdx: 0, levelStats: null, weapons: [], seed };
   game.stats = newStats();
   game.combo = { count: 0, last: -99 };
   game.time = 0;
@@ -46,6 +49,7 @@ function clearFloor() {
   game.enemies = [];
   game.level?.dispose();
   game.level = null;
+  game.layout = null;
   fx.clear();
 }
 
@@ -59,8 +63,12 @@ export function loadFloor(levelIdx, floorIdx) {
   const lv = LEVELS[levelIdx], fl = lv.floors[floorIdx], theme = THEMES[lv.theme];
   if (game.run) { game.run.levelIdx = levelIdx; game.run.floorIdx = floorIdx; }
   applyTheme(theme);
-  const L = game.level = new Level(scene, fl.rows, theme);
-  const R = rng(1000 + levelIdx * 100 + floorIdx);
+  // l'étage est assemblé à partir de salles, selon la graine de la partie
+  const seed = game.run ? game.run.seed : MENU_SEED;
+  const layout = generateFloor(levelIdx, floorIdx, seed);
+  const L = game.level = new Level(scene, layout.rows, theme);
+  game.layout = { level: L, rooms: layout.rooms, doors: layout.doors };
+  const R = rng(seed * 31 + 1000 + levelIdx * 100 + floorIdx);
   const hpMul = game.diff.enemyHp;
 
   // emplacements : les cases « e » (+ les cases « B » si l'étage n'a pas de boss), loin de l'arrivée
@@ -69,7 +77,7 @@ export function loadFloor(levelIdx, floorIdx) {
   const spots = shuffle([...L.spawns, ...(bossKeys.length ? [] : L.bossSpots)].filter(far), R);
   const count = Math.min(fl.count, spots.length);
 
-  // types tirés selon le mélange du bâtiment (toujours le même résultat pour un étage donné)
+  // types tirés selon le mélange du bâtiment (toujours le même résultat pour une graine donnée)
   const mix = lv.mix;
   const nHeavy = Math.min(count, Math.round(count * (mix.heavy || 0)) + (fl.extraHeavy || 0));
   const nRusher = Math.min(count - nHeavy, Math.round(count * (mix.rusher || 0)));
@@ -92,7 +100,7 @@ export function loadFloor(levelIdx, floorIdx) {
     game.enemies.push(new Enemy(scene, s.x, s.z, Math.floor(R() * 4) * Math.PI / 2, def, { hpMul, boss: true, key }));
   });
 
-  // joueur : face à l'escalier / la sortie pour s'orienter
+  // joueur : dos à l'entrée, face à l'enfilade des salles
   const p = game.player;
   p.pos.set(L.start.x, 0, L.start.z);
   const goal = L.goalCenter || p.pos;

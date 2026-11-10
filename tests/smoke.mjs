@@ -34,9 +34,9 @@ try {
   await page.waitForFunction(() => window.game?.debug?.selfTest, null, { timeout: 30000 });
   const report = await page.evaluate(() => window.game.debug.selfTest());
   errors.push(...report.problems);
-  console.log(`${report.floors} étages chargés et joués, ${report.enemies} ennemis, ${report.bosses} boss`);
+  console.log(`${report.floors} étages chargés et joués, ${report.enemies} ennemis, ${report.bosses} boss, ${report.maxCalls} appels d'affichage au plus`);
   if (report.floors !== 15) errors.push(`15 étages attendus, ${report.floors} joués`);
-  if (report.enemies !== 143) errors.push(`143 ennemis attendus, ${report.enemies} présents`);
+  if (report.enemies !== 150) errors.push(`150 ennemis attendus, ${report.enemies} présents`);
   if (report.bosses !== 6) errors.push(`6 boss attendus, ${report.bosses} présents`);
   code = errors.length ? 1 : 0;
 } catch (e) {
