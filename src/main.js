@@ -7,6 +7,7 @@ import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
+import { initSettings } from './ui/settings.js';
 
 const H_FOV = 100; // champ de vision horizontal (degrés)
 
@@ -93,6 +94,7 @@ if (params.get('fps')) {
 
 // ---------------------------------------------------------------- démarrage
 initScreens();
+initSettings();
 resize();
 menuBackdrop(0);
 game.state = 'menu';
