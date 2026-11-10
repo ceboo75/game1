@@ -53,7 +53,12 @@ export function applyAudio() {
 }
 
 /** Démarre le son : doit être appelé pendant un geste de l'utilisateur. */
-export function audioOn() { sfx.init(); music.start(); applyAudio(); }
+export function audioOn() {
+  sfx.init();
+  music.start();
+  if (music.started) sfx.adoptMusic(music.out); // la musique passe par le mixage des bruitages
+  applyAudio();
+}
 
 export const game = {
   state: 'menu',          // menu | select | play | transition | paused | end

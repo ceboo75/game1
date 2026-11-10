@@ -6,6 +6,7 @@ import { $, params, game, hooks, sfx } from './game/state.js';
 import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
 import { updateViewmodel } from './game/viewmodel.js';
+import { updateAmbience } from './game/ambience.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
 import { initSettings } from './ui/settings.js';
@@ -18,10 +19,11 @@ game.alertNear = alertNear;
 hooks.pause = pause;
 window.game = game; // accès console pour le débogage
 
-/** Une image de jeu : la simulation, puis l'animation de l'arme qui en découle. */
+/** Une image de jeu : la simulation, puis ce qui en découle (animation de l'arme, sons d'ambiance). */
 function tick(dt) {
   update(dt);
   updateViewmodel(dt);
+  updateAmbience(dt);
 }
 
 // ---------------------------------------------------------------- crochets de test
