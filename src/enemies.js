@@ -1,28 +1,13 @@
-// Ennemis : hommes de main, rushers, lourds et boss. Corps en blocs, zones de touche tête / corps.
+// Ennemis : hommes de main, rushers, lourds et boss. Comportement et tir ; le corps animé est dans game/body.js.
 import * as THREE from 'three';
 import { ENEMY_WEAPONS } from './levels.js';
+import { Body } from './game/body.js';
 
-const SKIN = new THREE.MeshStandardMaterial({ color: 0xb98e6e, roughness: 0.8 });
-const HAIR = new THREE.MeshStandardMaterial({ color: 0x141012, roughness: 0.9 });
-const GUN = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.5, metalness: 0.15 });
-const HELMET = new THREE.MeshStandardMaterial({ color: 0x1c1f1a, roughness: 0.5, metalness: 0.2 });
 const HITBOX = new THREE.MeshBasicMaterial({ visible: false });
-const matCache = new Map();
-const flat = (color, basic = false) => {
-  const k = `${color}|${basic}`;
-  if (!matCache.has(k)) matCache.set(k, basic ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
-  return matCache.get(k);
-};
-
-const geoCache = new Map();
-function box(w, h, d, mat, x, y, z, parent) {
-  const key = `${w}|${h}|${d}`;
-  if (!geoCache.has(key)) geoCache.set(key, new THREE.BoxGeometry(w, h, d));
-  const m = new THREE.Mesh(geoCache.get(key), mat);
-  m.position.set(x, y, z);
-  parent.add(m);
-  return m;
-}
+const HEAD_BOX = new THREE.BoxGeometry(0.38, 0.36, 0.38);
+const BODY_BOX = new THREE.BoxGeometry(0.62, 1.46, 0.45);
+const PLAYER_CHEST = 1.45; // hauteur visée sur le joueur (m)
+const GUN_HEIGHT = 1.45;   // hauteur de l'arme épaulée, pour un ennemi de taille 1
 
 const tmp = new THREE.Vector3();
 const lerpAngle = (a, b, t) => {
@@ -56,48 +41,27 @@ export class Enemy {
     this.strafeTimer = 0;
     this.strafeDir = 0;
     this.prefDist = def.pref[0];
-    this.walkT = Math.random() * 6;
+    this.dist = 99;          // distance au joueur, mise à jour à chaque image
     this.flashT = 0;
-    this.deathT = 0;
     this.aimT = 0;           // visée laser (tireuse d'élite)
     this.called = false;     // a déjà prévenu ses voisins
     this.radius = 0.3 * def.scale;
     this.weaponKey = def.weapon === 'combo' ? 'rifle' : def.weapon;
 
-    const r = this.root = new THREE.Group();
-    r.rotation.order = 'YXZ';
-    this.suit = new THREE.MeshStandardMaterial({ color: def.suit, roughness: 0.7, emissive: 0x0c0c12 });
-
-    this.legL = new THREE.Group(); this.legL.position.set(-0.11, 0.86, 0); r.add(this.legL);
-    this.legR = new THREE.Group(); this.legR.position.set(0.11, 0.86, 0); r.add(this.legR);
-    box(0.17, 0.86, 0.2, this.suit, 0, -0.43, 0, this.legL);
-    box(0.17, 0.86, 0.2, this.suit, 0, -0.43, 0, this.legR);
-    box(0.5, 0.62, 0.28, this.suit, 0, 1.17, 0, r);                       // torse
-    box(0.18, 0.5, 0.01, flat(def.shirt), 0, 1.24, 0.145, r);             // chemise
-    if (def.tie) box(0.05, 0.36, 0.012, flat(def.tie), 0, 1.22, 0.152, r); // cravate
-    if (def.vest) box(0.56, 0.46, 0.36, flat(0x2a2e26), 0, 1.2, 0, r);     // gilet pare-balles
-    box(0.13, 0.13, 0.5, this.suit, 0.21, 1.32, 0.2, r);                  // bras
-    box(0.13, 0.13, 0.5, this.suit, -0.12, 1.3, 0.25, r);
     const wp = ENEMY_WEAPONS[this.weaponKey];
     const gunLen = def.weapon === 'combo' ? 0.55 : wp.len;
-    box(def.weapon === 'lmg' ? 0.11 : 0.07, def.weapon === 'lmg' ? 0.14 : 0.1, gunLen, GUN, 0.06, 1.35, 0.2 + gunLen / 2, r);
-    this.muzzleLocal = new THREE.Vector3(0.06, 1.35, 0.25 + gunLen);
-    box(0.24, 0.27, 0.25, SKIN, 0, 1.63, 0, r);                           // tête
-    if (def.helmet) box(0.29, 0.13, 0.3, HELMET, 0, 1.79, -0.01, r);
-    else box(0.25, 0.07, 0.26, HAIR, 0, 1.78, -0.01, r);
-    box(0.25, 0.04, 0.02, flat(def.visor, true), 0, 1.66, 0.13, r);       // lunettes néon
+    this.body = new Body(def, gunLen, def.weapon === 'lmg');
+    const r = this.root = this.body.root;
 
     // Zones de touche invisibles (un peu plus larges que le modèle : plus confortable au tactile).
-    const head = box(0.38, 0.36, 0.38, HITBOX, 0, 1.64, 0, r);
-    const body = box(0.62, 1.46, 0.45, HITBOX, 0, 0.73, 0, r);
+    const head = new THREE.Mesh(HEAD_BOX, HITBOX); head.position.set(0, 1.64, 0); r.add(head);
+    const body = new THREE.Mesh(BODY_BOX, HITBOX); body.position.set(0, 0.73, 0); r.add(body);
     head.userData = { enemy: this, part: 'head' };
     body.userData = { enemy: this, part: 'body' };
     this.hitboxes = [head, body];
 
-    r.scale.setScalar(def.scale);
-    r.position.copy(this.pos);
-    r.rotation.y = yaw;
     scene.add(r);
+    this._pose(0, 0);
 
     if (wp.laser) {
       const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]);
@@ -123,24 +87,25 @@ export class Enemy {
     if (this.hp <= 0) {
       this.alive = false;
       this.yaw = Math.atan2(fromX - this.pos.x, fromZ - this.pos.z);
-      this.legL.rotation.x = this.legR.rotation.x = 0;
       if (this.laser) this.laser.visible = false;
+      this.body.die(amount >= this.maxHp * 0.9); // tué d'un seul coup : projeté en arrière
       return true;
     }
+    this.body.flinch(Math.min(1, (amount / this.maxHp) * 3));
     return false;
   }
 
   update(dt, g) {
     if (this.flashT > 0) {
       this.flashT -= dt;
-      if (this.flashT > 0) this.suit.emissive.setScalar(0.9);
-      else this.suit.emissive.setHex(0x0c0c12);
+      if (this.flashT > 0) this.body.material.emissive.setScalar(0.9);
+      else this.body.material.emissive.setHex(0x0c0c12);
     }
-    if (!this.alive) return this._updateDeath(dt);
+    if (!this.alive) { this._pose(dt, 0); return; }
 
     const p = g.player.pos;
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z;
-    const dist = Math.hypot(dx, dz) || 0.001;
+    const dist = this.dist = Math.hypot(dx, dz) || 0.001;
 
     this.losTimer -= dt;
     if (this.losTimer <= 0) {
@@ -215,19 +180,25 @@ export class Enemy {
     this._pose(dt, moving);
   }
 
+  /** Bout du canon dans le monde (met à jour les matrices du corps). */
+  _muzzle(out) {
+    this.root.updateMatrixWorld(true);
+    return this.body.muzzleWorld(out);
+  }
+
   _updateLaser(g) {
-    const a = this.root.localToWorld(tmp.copy(this.muzzleLocal));
+    const a = this._muzzle(tmp);
     const pos = this.laser.geometry.attributes.position;
     pos.setXYZ(0, a.x, a.y, a.z);
-    pos.setXYZ(1, g.player.pos.x, 1.45, g.player.pos.z);
+    pos.setXYZ(1, g.player.pos.x, PLAYER_CHEST, g.player.pos.z);
     pos.needsUpdate = true;
     this.laser.geometry.computeBoundingSphere();
     this.laser.material.opacity = 0.5 + 0.5 * Math.sin(performance.now() / 40);
   }
 
   _shoot(g, dist, wp) {
-    this.root.updateMatrixWorld(true);
-    const muzzle = this.root.localToWorld(tmp.copy(this.muzzleLocal)).clone();
+    const muzzle = this._muzzle(new THREE.Vector3());
+    this.body.kick();
     let chance = g.diff.enemyAcc * wp.acc * Math.min(1, Math.max(0.2, 1.15 - dist / 28));
     if (wp.laser) chance = Math.min(0.9, g.diff.enemyAcc * wp.acc);
     if (g.player.moving) chance *= 0.7;
@@ -252,28 +223,19 @@ export class Enemy {
     if (hit) g.hurtPlayer(dmg, this.pos);
   }
 
+  /** Transmet au corps animé ce que fait l'ennemi à cette image. */
   _pose(dt, speed) {
-    if (speed > 0) this.walkT += dt * speed * 2.6;
-    const a = speed > 0 ? Math.sin(this.walkT) * 0.55 : 0;
-    this.legL.rotation.x = a;
-    this.legR.rotation.x = -a;
-    this.root.position.set(this.pos.x, speed > 0 ? Math.abs(Math.cos(this.walkT)) * 0.04 : 0, this.pos.z);
-    this.root.rotation.y = this.yaw;
-  }
-
-  _updateDeath(dt) {
-    if (this.deathT >= 1) return;
-    this.deathT = Math.min(1, this.deathT + dt / 0.42);
-    const k = this.deathT * this.deathT;
-    this.root.rotation.y = this.yaw;
-    this.root.rotation.x = -k * Math.PI / 2;
-    const back = 0.5 * k;
-    this.root.position.set(this.pos.x - Math.sin(this.yaw) * back, 0.15 * k * this.def.scale, this.pos.z - Math.cos(this.yaw) * back);
+    const alert = this.state === 'alert';
+    this.body.update(dt, {
+      x: this.pos.x, z: this.pos.z, yaw: this.yaw, speed,
+      alert,
+      aim: alert && this.hasLOS,
+      aimPitch: Math.atan2(PLAYER_CHEST - GUN_HEIGHT * this.def.scale, this.dist),
+    });
   }
 
   dispose() {
-    this.root.removeFromParent();
-    this.suit.dispose();
+    this.body.dispose();
     if (this.laser) { this.laser.removeFromParent(); this.laser.geometry.dispose(); this.laser.material.dispose(); }
   }
 }
