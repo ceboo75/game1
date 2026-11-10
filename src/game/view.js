@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Fx } from '../fx.js';
 import { $, params, game } from './state.js';
+import { syncDecor } from './decor.js';
 
 export const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, parseFloat(params.get('dpr')) || 2));
@@ -49,6 +50,7 @@ export function applyFov(zoom) {
 }
 
 export function render() {
+  syncDecor(); // le mobilier suit l'étage affiché, quel que soit l'écran qui l'a chargé
   renderer.clear();
   renderer.render(scene, camera);
   if (game.state === 'play' || game.state === 'paused' || game.state === 'transition') {
