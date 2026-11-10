@@ -2,13 +2,20 @@
 import * as THREE from 'three';
 import { ENEMY_WEAPONS } from './levels.js';
 import { Body } from './game/body.js';
+import { AttackTokens, MAX_SHOOTERS } from './core/tactics.js';
+import { alertBark, telegraph, whizz } from './game/cues.js';
 
 const HITBOX = new THREE.MeshBasicMaterial({ visible: false });
 const HEAD_BOX = new THREE.BoxGeometry(0.38, 0.36, 0.38);
 const BODY_BOX = new THREE.BoxGeometry(0.62, 1.46, 0.45);
 const PLAYER_CHEST = 1.45; // hauteur visée sur le joueur (m)
 const GUN_HEIGHT = 1.45;   // hauteur de l'arme épaulée, pour un ennemi de taille 1
+const WINDUP = 0.4;        // annonce avant une rafale qui peut toucher (s), raccourcie par la difficulté
+const ACCURATE_BONUS = 1.3; // ceux qui ont le droit de toucher visent mieux, pour compenser leur petit nombre
+const SUPPRESS_GAP = 1.6;   // les tirs de couverture sont plus espacés
+const BASE_GLOW = 0x0c0c12;
 
+const tokens = new AttackTokens();
 const tmp = new THREE.Vector3();
 const lerpAngle = (a, b, t) => {
   let d = b - a;
@@ -35,7 +42,10 @@ export class Enemy {
     this.state = 'idle';
     this.reaction = 0;
     this.fireCd = 0;
-    this.burst = 0;
+    this.burst = 0;          // tirs restants dans la rafale en cours
+    this.accurate = false;   // la rafale en cours peut toucher (jeton d'attaque)
+    this.windup = 0;         // annonce en cours avant une rafale qui peut toucher
+    this.tokenCd = 0;        // délai avant de redemander un jeton : les tireurs dangereux tournent
     this.hasLOS = false;
     this.losTimer = Math.random() * 0.2;
     this.strafeTimer = 0;
@@ -86,6 +96,8 @@ export class Enemy {
     this.alert(0.15);
     if (this.hp <= 0) {
       this.alive = false;
+      this.windup = 0;
+      tokens.release(this);
       this.yaw = Math.atan2(fromX - this.pos.x, fromZ - this.pos.z);
       if (this.laser) this.laser.visible = false;
       this.body.die(amount >= this.maxHp * 0.9); // tué d'un seul coup : projeté en arrière
@@ -95,12 +107,24 @@ export class Enemy {
     return false;
   }
 
+  /** Position de l'ennemi dans le champ stéréo du joueur : -1 à gauche, 1 à droite. */
+  _pan(g) {
+    const p = g.player;
+    return ((this.pos.x - p.pos.x) * Math.cos(p.yaw) - (this.pos.z - p.pos.z) * Math.sin(p.yaw)) / Math.max(1, this.dist);
+  }
+
+  /** Lueur du corps : éclair blanc à l'impact, pulsation rose pendant l'annonce d'une rafale dangereuse. */
+  _glow(dt) {
+    const em = this.body.material.emissive;
+    if (this.flashT > 0) { this.flashT -= dt; em.setScalar(0.9); }
+    else if (this.windup > 0) {
+      const k = 0.55 + 0.45 * Math.sin(performance.now() / 28);
+      em.setRGB(0.95 * k, 0.1 * k, 0.32 * k);
+    } else em.setHex(BASE_GLOW);
+  }
+
   update(dt, g) {
-    if (this.flashT > 0) {
-      this.flashT -= dt;
-      if (this.flashT > 0) this.body.material.emissive.setScalar(0.9);
-      else this.body.material.emissive.setHex(0x0c0c12);
-    }
+    this._glow(dt);
     if (!this.alive) { this._pose(dt, 0); return; }
 
     const p = g.player.pos;
@@ -118,7 +142,11 @@ export class Enemy {
       this._pose(dt, 0);
       return;
     }
-    if (!this.called) { this.called = true; g.alertNear(this); }
+    if (!this.called) {
+      this.called = true;
+      g.alertNear(this);
+      alertBark(g.sfx, this._pan(g), dist);
+    }
 
     this.reaction -= dt;
     this.yaw = lerpAngle(this.yaw, Math.atan2(dx, dz), 1 - Math.exp(-8 * dt));
@@ -158,26 +186,73 @@ export class Enemy {
       moving = speed;
     }
 
-    // tir
-    this.fireCd -= dt;
-    const canShoot = this.hasLOS && this.reaction <= 0 && dist < wp.range;
-    if (this.aimT > 0) {
-      if (!this.hasLOS) { this.aimT = 0; this.laser.visible = false; }
-      else {
-        this.aimT -= dt;
-        this._updateLaser(g);
-        if (this.aimT <= 0) { this.laser.visible = false; this._shoot(g, dist, wp); this.fireCd = rand(wp.gap[0], wp.gap[1]); }
-      }
-    } else if (canShoot && this.fireCd <= 0) {
-      if (wp.laser) { this.aimT = wp.laser; this.laser.visible = true; this._updateLaser(g); }
-      else {
-        if (this.burst <= 0) this.burst = Math.round(rand(wp.burst[0], wp.burst[1]));
-        this._shoot(g, dist, wp);
-        this.burst--;
-        this.fireCd = this.burst > 0 ? wp.every : rand(wp.gap[0], wp.gap[1]);
-      }
-    }
+    this._fire(dt, g, dist, wp);
     this._pose(dt, moving);
+  }
+
+  /** Abandonne la rafale dangereuse en cours ou annoncée et rend le jeton. */
+  _dropToken() {
+    tokens.release(this);
+    this.windup = 0;
+    if (this.accurate) { this.accurate = false; this.burst = 0; }
+  }
+
+  /**
+   * Décision de tir. Une rafale qui peut toucher demande un jeton d'attaque (sauf pour les boss) et s'annonce
+   * par une lueur et un son ; sans jeton, l'ennemi tire à côté pour maintenir la pression.
+   */
+  _fire(dt, g, dist, wp) {
+    this.fireCd -= dt;
+    this.tokenCd -= dt;
+    const canShoot = this.hasLOS && this.reaction <= 0 && dist < wp.range;
+
+    if (this.aimT > 0) {
+      // tireuse d'élite : le laser est déjà son annonce
+      if (!this.hasLOS) { this.aimT = 0; this.laser.visible = false; return; }
+      this.aimT -= dt;
+      this._updateLaser(g);
+      if (this.aimT <= 0) { this.laser.visible = false; this._shoot(g, dist, wp, true); this.fireCd = rand(wp.gap[0], wp.gap[1]); }
+      return;
+    }
+    if (!canShoot) {
+      if (this.windup > 0 || this.accurate) this._dropToken(); // le joueur s'est mis à l'abri
+      return;
+    }
+    if (this.windup > 0) {
+      this.windup -= dt;
+      if (this.windup <= 0) {
+        this.accurate = true;
+        this.burst = Math.round(rand(wp.burst[0], wp.burst[1]));
+        this.fireCd = 0;
+      }
+      return;
+    }
+    if (this.fireCd > 0) return;
+
+    if (wp.laser) { this.aimT = wp.laser; this.laser.visible = true; this._updateLaser(g); return; }
+
+    if (this.burst <= 0) {
+      // nouvelle rafale : dangereuse si un jeton est libre, de couverture sinon
+      const max = MAX_SHOOTERS[g.diff.id] ?? MAX_SHOOTERS.normal;
+      if (this.tokenCd <= 0 && (this.boss || tokens.request(this, max, g.enemies))) {
+        this.windup = WINDUP * Enemy.reactionMul;
+        telegraph(g.sfx, this._pan(g));
+        return;
+      }
+      this.accurate = false;
+      this.burst = Math.max(1, Math.round(rand(wp.burst[0], wp.burst[1]) / 2));
+    }
+
+    this._shoot(g, dist, wp, this.accurate);
+    this.burst--;
+    if (this.burst > 0) { this.fireCd = wp.every; return; }
+    const gap = rand(wp.gap[0], wp.gap[1]);
+    if (this.accurate) {
+      this.accurate = false;
+      tokens.release(this);
+      this.tokenCd = rand(1.2, 2.2);
+      this.fireCd = gap;
+    } else this.fireCd = gap * SUPPRESS_GAP;
   }
 
   /** Bout du canon dans le monde (met à jour les matrices du corps). */
@@ -196,13 +271,17 @@ export class Enemy {
     this.laser.material.opacity = 0.5 + 0.5 * Math.sin(performance.now() / 40);
   }
 
-  _shoot(g, dist, wp) {
+  /** @param accurate faux pour un tir de couverture, qui ne touche jamais */
+  _shoot(g, dist, wp, accurate) {
     const muzzle = this._muzzle(new THREE.Vector3());
     this.body.kick();
-    let chance = g.diff.enemyAcc * wp.acc * Math.min(1, Math.max(0.2, 1.15 - dist / 28));
-    if (wp.laser) chance = Math.min(0.9, g.diff.enemyAcc * wp.acc);
-    if (g.player.moving) chance *= 0.7;
-    chance = Math.min(0.95, chance);
+    let chance = 0;
+    if (accurate) {
+      chance = g.diff.enemyAcc * wp.acc * Math.min(1, Math.max(0.2, 1.15 - dist / 28)) * ACCURATE_BONUS;
+      if (wp.laser) chance = Math.min(0.9, g.diff.enemyAcc * wp.acc);
+      if (g.player.moving) chance *= 0.7;
+      chance = Math.min(0.95, chance);
+    }
     let dmg = g.diff.enemyDmg * wp.dmg;
     if (wp.close) dmg *= dist < 6 ? 2.6 : dist < 10 ? 1.4 : 0.5;
     const pellets = wp.close ? 4 : 1;
@@ -221,6 +300,7 @@ export class Enemy {
     g.fx.muzzle(muzzle);
     g.sfx.enemyShot(dist, this.weaponKey);
     if (hit) g.hurtPlayer(dmg, this.pos);
+    else if (dist < 30) whizz(g.sfx, this._pan(g)); // la balle manquée siffle du côté du tireur
   }
 
   /** Transmet au corps animé ce que fait l'ennemi à cette image. */
@@ -235,8 +315,11 @@ export class Enemy {
   }
 
   dispose() {
+    tokens.release(this);
     this.body.dispose();
     if (this.laser) { this.laser.removeFromParent(); this.laser.geometry.dispose(); this.laser.material.dispose(); }
   }
 }
 Enemy.reactionMul = 1;
+/** Jetons d'attaque partagés par tous les ennemis (exposés pour les tests). */
+Enemy.tokens = tokens;
