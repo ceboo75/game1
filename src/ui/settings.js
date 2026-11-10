@@ -1,12 +1,14 @@
-// Écran de réglages : contrôles, boutons tactiles, volumes. Ouvert depuis l'écran titre ou la pause.
+// Écran de réglages : contrôles, boutons tactiles, affichage, volumes. Ouvert depuis l'écran titre ou la pause.
 import { SETTINGS } from '../core/settings.js';
 import { $, settings, setSetting, applyAudio } from '../game/state.js';
+import { applyQuality } from '../game/perf.js';
 import { t } from '../core/i18n.js';
 
 // Ordre d'affichage : un titre de groupe, puis ses réglages.
 const LAYOUT = [
   ['aim', ['sens', 'sensAds', 'assist', 'autoFire', 'gyro', 'gyroSens']],
   ['buttons', ['btnScale', 'btnOpacity']],
+  ['display', ['quality', 'fpsCap', 'showPerf']],
   ['audio', ['volMusic', 'volSfx']],
 ];
 
@@ -19,6 +21,13 @@ export function applyTouch() {
   s.setProperty('--btn-opacity', settings.btnOpacity);
 }
 
+/** Répercute tous les réglages sur le jeu. */
+function applyAll() {
+  applyAudio();
+  applyTouch();
+  applyQuality();
+}
+
 const percent = v => `${Math.round(v * 100)} %`;
 
 function row(key) {
@@ -29,29 +38,41 @@ function row(key) {
   name.className = 'setName';
   name.textContent = t(`settings.${key}`);
   el.appendChild(name);
+  const val = document.createElement('span');
+  val.className = 'setVal';
+
+  if (def.options) {
+    const select = document.createElement('select');
+    select.dataset.key = key;
+    for (const opt of def.options) {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = t(`settings.${key}.${opt}`);
+      select.appendChild(o);
+    }
+    select.value = settings[key];
+    select.addEventListener('change', () => { setSetting(key, select.value); applyAll(); });
+    el.append(select, val);
+    return el;
+  }
 
   const input = document.createElement('input');
   input.dataset.key = key;
   if (typeof def.def === 'boolean') {
     input.type = 'checkbox';
     input.checked = settings[key];
-    const state = document.createElement('span');
-    state.className = 'setVal';
-    const show = () => { state.textContent = t(input.checked ? 'settings.on' : 'settings.off'); };
-    input.addEventListener('change', () => { setSetting(key, input.checked); show(); });
+    const show = () => { val.textContent = t(input.checked ? 'settings.on' : 'settings.off'); };
+    input.addEventListener('change', () => { setSetting(key, input.checked); show(); applyAll(); });
     show();
-    el.append(input, state);
   } else {
     input.type = 'range';
     input.min = def.min; input.max = def.max; input.step = def.step;
     input.value = settings[key];
-    const val = document.createElement('span');
-    val.className = 'setVal';
     const show = () => { val.textContent = percent(settings[key]); };
-    input.addEventListener('input', () => { setSetting(key, input.value); show(); applyAudio(); applyTouch(); });
+    input.addEventListener('input', () => { setSetting(key, input.value); show(); applyAll(); });
     show();
-    el.append(input, val);
   }
+  el.append(input, val);
   return el;
 }
 
@@ -88,8 +109,7 @@ export function initSettings() {
   screen.querySelector('#setClose').addEventListener('click', closeSettings);
   screen.querySelector('#setReset').addEventListener('click', () => {
     for (const key of Object.keys(SETTINGS)) setSetting(key, SETTINGS[key].def);
-    applyAudio();
-    applyTouch();
+    applyAll();
     build();
   });
 

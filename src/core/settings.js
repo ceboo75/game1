@@ -1,4 +1,5 @@
 // Réglages du joueur : valeurs par défaut, bornes et nettoyage. Logique pure, testée automatiquement.
+// Trois formes : nombre borné (min, max, step), oui/non (def booléen), choix dans une liste (options).
 
 export const SETTINGS = {
   sens:       { def: 1, min: 0.4, max: 2.5, step: 0.05 },  // sensibilité de la visée à la hanche
@@ -11,12 +12,16 @@ export const SETTINGS = {
   btnOpacity: { def: 1, min: 0.3, max: 1, step: 0.05 },
   volMusic:   { def: 1, min: 0, max: 1, step: 0.05 },
   volSfx:     { def: 1, min: 0, max: 1, step: 0.05 },
+  quality:    { def: 'auto', options: ['auto', 'low', 'medium', 'high'] }, // finesse de l'image
+  fpsCap:     { def: '60', options: ['30', '60', 'max'] },                 // images par seconde au plus
+  showPerf:   { def: false },                                              // compteur de performances à l'écran
 };
 
 /** Ramène une valeur dans le type et les bornes du réglage ; valeur par défaut si elle est inutilisable. */
 export function cleanValue(key, value) {
   const s = SETTINGS[key];
   if (!s) return undefined;
+  if (s.options) return s.options.includes(value) ? value : s.def;
   if (typeof s.def === 'boolean') return typeof value === 'boolean' ? value : s.def;
   const n = Number(value);
   if (value === null || value === '' || !Number.isFinite(n)) return s.def;

@@ -2,11 +2,12 @@
 import * as THREE from 'three';
 import { LEVELS, DIFFICULTIES } from './levels.js';
 import { weaponById } from './weapons.js';
-import { $, params, game, hooks, sfx } from './game/state.js';
+import { $, game, hooks, sfx } from './game/state.js';
 import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
 import { updateViewmodel } from './game/viewmodel.js';
 import { updateAmbience } from './game/ambience.js';
+import { applyQuality, frameGate, perfFrame, perfState } from './game/perf.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
 import { initSettings } from './ui/settings.js';
@@ -38,9 +39,10 @@ game.debug = {
   },
   step: (frames = 1, dt = 1 / 60) => { for (let i = 0; i < frames && game.state === 'play'; i++) tick(dt); },
   render: () => render(),
+  perf: () => perfState(),
   /** Charge chaque étage, le fait tourner quelques secondes et signale tout problème. */
   selfTest: (frames = 120) => {
-    const report = { floors: 0, enemies: 0, bosses: 0, problems: [] };
+    const report = { floors: 0, enemies: 0, bosses: 0, maxCalls: 0, maxTriangles: 0, problems: [] };
     const was = game.debug.instant;
     game.debug.instant = true;
     LEVELS.forEach((lv, li) => lv.floors.forEach((fl, fi) => {
@@ -55,6 +57,9 @@ game.debug = {
         report.bosses += bosses;
         for (let i = 0; i < frames; i++) { game.player.health = 100; game.debug.step(1); }
         render();
+        const cost = perfState();
+        report.maxCalls = Math.max(report.maxCalls, cost.calls);
+        report.maxTriangles = Math.max(report.maxTriangles, cost.triangles);
         if (game.state !== 'play') report.problems.push(`${where} : état « ${game.state} » après ${frames} images`);
         report.floors++;
       } catch (e) {
@@ -93,17 +98,10 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// ---------------------------------------------------------------- compteur d'images (?fps=1)
-let fpsEl = null, fpsFrames = 0, fpsT = 0;
-if (params.get('fps')) {
-  fpsEl = document.createElement('div');
-  fpsEl.style.cssText = 'position:fixed;left:50%;bottom:6px;transform:translateX(-50%);font:12px monospace;color:#0f8;z-index:40;pointer-events:none';
-  document.body.appendChild(fpsEl);
-}
-
 // ---------------------------------------------------------------- démarrage
 initScreens();
 initSettings();
+applyQuality();
 resize();
 menuBackdrop(0);
 game.state = 'menu';
@@ -111,15 +109,14 @@ game.state = 'menu';
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
+  if (!frameGate(now)) return; // limite d'images par seconde
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (game.state === 'play') tick(dt);
+  const playing = game.state === 'play';
+  if (playing) tick(dt);
   else if (game.state === 'menu' || game.state === 'select') idleCamera(dt);
   else if (game.state === 'transition' && game.ws) updateCamera(0);
   render();
-  if (fpsEl) {
-    fpsFrames++; fpsT += dt;
-    if (fpsT >= 0.5) { fpsEl.textContent = `${Math.round(fpsFrames / fpsT)} ips`; fpsFrames = 0; fpsT = 0; }
-  }
+  perfFrame(dt, playing);
 }
 requestAnimationFrame(frame);

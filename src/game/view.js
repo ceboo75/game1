@@ -1,15 +1,20 @@
 // Rendu : scène du monde, scène de l'arme, caméras.
 import * as THREE from 'three';
 import { Fx } from '../fx.js';
-import { $, params, game } from './state.js';
+import { $, game, settings } from './state.js';
 import { syncDecor } from './decor.js';
 
-export const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, parseFloat(params.get('dpr')) || 2));
+// Le lissage des contours se décide à la création : en qualité basse il est coupé, et un changement de qualité
+// ne le modifie qu'au lancement suivant. La finesse de l'image, elle, est réglée en continu par perf.js.
+export const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: settings.quality !== 'low', powerPreference: 'high-performance' });
 renderer.setClearColor(0x07060b);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.3;
 renderer.autoClear = false;
+renderer.info.autoReset = false; // on compte les appels d'affichage sur l'image entière (monde + arme)
+
+/** Coût de la dernière image affichée. */
+export const renderStats = { calls: 0, triangles: 0 };
 
 export const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x110e18, 20, 60);
@@ -51,10 +56,13 @@ export function applyFov(zoom) {
 
 export function render() {
   syncDecor(); // le mobilier suit l'étage affiché, quel que soit l'écran qui l'a chargé
+  renderer.info.reset();
   renderer.clear();
   renderer.render(scene, camera);
   if (game.state === 'play' || game.state === 'paused' || game.state === 'transition') {
     renderer.clearDepth();
     renderer.render(gunScene, gunCam);
   }
+  renderStats.calls = renderer.info.render.calls;
+  renderStats.triangles = renderer.info.render.triangles;
 }
