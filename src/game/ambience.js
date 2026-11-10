@@ -3,7 +3,13 @@
 import { LEVELS } from '../levels.js';
 import { game, sfx } from './state.js';
 
-const SURFACES = { villa: 'wood', hotel: 'carpet', tower: 'tile' };
+// Sol de chaque bâtiment et niveau de ses pas. Mesuré en sortie de mixage : sans cette correction, la moquette
+// et le carrelage sont presque inaudibles à côté du parquet. À reporter dans audio.js à sa prochaine réécriture.
+const SURFACES = {
+  villa: { kind: 'wood', level: 1 },
+  hotel: { kind: 'carpet', level: 4 },
+  tower: { kind: 'tile', level: 4 },
+};
 const LOW_HEALTH = 40;
 let lastStep = 0, beatIn = 0;
 
@@ -16,8 +22,8 @@ export function updateAmbience(dt) {
   if (step !== lastStep) {
     lastStep = step;
     if (p.moving) {
-      const theme = game.run ? LEVELS[game.run.levelIdx].theme : 'villa';
-      sfx.footstep(SURFACES[theme] || 'wood', game.ws && game.ws.ads ? 0.6 : 1);
+      const surface = SURFACES[game.run ? LEVELS[game.run.levelIdx].theme : 'villa'] || SURFACES.villa;
+      sfx.footstep(surface.kind, surface.level * (game.ws && game.ws.ads ? 0.6 : 1));
     }
   }
 
