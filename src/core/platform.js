@@ -4,6 +4,8 @@
 export const isApp = location.hostname === 'appassets.androidplatform.net';
 
 export function vibrate(ms) {
+  // le navigateur refuse (et signale une erreur) tant que le joueur n'a pas touché l'écran
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
   try { navigator.vibrate?.(ms); } catch { /* non supporté */ }
 }
 

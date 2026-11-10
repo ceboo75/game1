@@ -1,6 +1,6 @@
 // Tests de la logique pure. Lancés par Node (tests/run.mjs) et par le navigateur (tests/index.html).
 import { comboMult, nextCombo, killPoints, COMBO_WINDOW } from '../src/core/score.js';
-import { validateMap } from '../src/core/grid.js';
+import { validateMap, parseMap, farSpots } from '../src/core/grid.js';
 import { Save, SAVE_KEY, SAVE_VERSION, memStorage } from '../src/core/save.js';
 import { t, tr } from '../src/core/i18n.js';
 import { LEVELS, DIFFICULTIES, DIFF_ORDER, BOSSES, rng } from '../src/levels.js';
@@ -13,6 +13,12 @@ function ok(cond, what) { if (!cond) throw new Error(what); }
 
 export const cases = [];
 const test = (name, fn) => cases.push({ name, fn });
+
+/** Nombre d'ennemis normaux qu'un étage peut réellement accueillir (même règle que le chargement d'un étage). */
+function capacity(fl) {
+  const map = parseMap(fl.rows);
+  return farSpots(map, fl.bosses?.length ? map.spawns : [...map.spawns, ...map.bossSpots]).length;
+}
 
 // ---------------------------------------------------------------- score
 test('combo : x1 puis +0,5 par kill, plafonné à x3', () => {
@@ -76,29 +82,40 @@ test('textes : les 9 armes ont un nom', () => {
 });
 
 // ---------------------------------------------------------------- contenu
-test('contenu : 3 bâtiments, 15 étages, 143 ennemis, 6 boss', () => {
+test('contenu : 3 bâtiments, 15 étages, 143 ennemis en jeu, 6 boss', () => {
   const floors = LEVELS.flatMap(l => l.floors);
   eq(LEVELS.map(l => l.floors.length), [2, 5, 8], 'étages par bâtiment');
-  eq(floors.reduce((n, f) => n + f.count, 0), 143, 'ennemis');
+  eq(floors.reduce((n, f) => n + Math.min(f.count, capacity(f)), 0), 143, 'ennemis réellement présents');
   eq(floors.reduce((n, f) => n + (f.bosses?.length || 0), 0), 6, 'boss');
   for (const f of floors) for (const b of f.bosses || []) ok(BOSSES[b], `boss inconnu : ${b}`);
   eq(DIFF_ORDER.every(id => DIFFICULTIES[id]?.id === id), true, 'difficultés');
 });
-test('cartes : chaque étage est jouable (sortie et ennemis atteignables)', () => {
+test('cartes : chaque étage est jouable (sortie, ennemis et boss atteignables)', () => {
   const problems = [];
   LEVELS.forEach(lv => lv.floors.forEach((fl, i) => {
-    for (const e of validateMap(fl.rows, { count: fl.count, bosses: fl.bosses?.length || 0 })) {
+    for (const e of validateMap(fl.rows, { bosses: fl.bosses?.length || 0 })) {
       problems.push(`${lv.name}, étage ${i + 1} (${fl.name}) : ${e}`);
     }
   }));
   ok(!problems.length, '\n  ' + problems.join('\n  '));
 });
-test('cartes : la validation détecte une porte bouchée', () => {
-  const blocked = ['#####', '#S#e#', '#.c.#', '#..X#', '#####'];
+// Défaut connu du contenu d'origine : 7 étages annoncent un ennemi de plus qu'ils n'ont d'emplacements
+// assez loin du départ (150 annoncés, 143 présents). Les cartes seront reconstruites en phase 3 ; d'ici là
+// ce test empêche l'écart de s'aggraver sans qu'on le voie. Format : « bâtiment/étage », à partir de 1.
+test('cartes : écart connu entre effectifs annoncés et emplacements', () => {
+  const short = [];
+  LEVELS.forEach((lv, li) => lv.floors.forEach((fl, fi) => {
+    const missing = fl.count - capacity(fl);
+    if (missing > 0) short.push(`${li + 1}/${fi + 1}:${missing}`);
+  }));
+  eq(short, ['1/2:1', '2/3:1', '2/4:1', '2/5:1', '3/5:1', '3/6:1', '3/7:1'], 'étages en sous-effectif');
+});
+test('cartes : la validation détecte une sortie ou un ennemi muré', () => {
   eq(validateMap(['#####', '#S.e#', '#...#', '#..X#', '#####']), [], 'carte saine');
-  ok(validateMap(blocked).length === 0, 'la carte témoin doit rester atteignable par le bas');
-  const sealed = ['#####', '#S#e#', '#.#.#', '#.#X#', '#####'];
-  ok(validateMap(sealed).length >= 2, 'sortie et ennemi murés non détectés');
+  eq(validateMap(['#####', '#S#e#', '#.c.#', '#..X#', '#####']), [], 'abri contournable');
+  ok(validateMap(['#####', '#S#e#', '#.#.#', '#.#X#', '#####']).length >= 2, 'sortie et ennemi murés non détectés');
+  ok(validateMap(['#####', '#S.e#', '#####']).length === 1, 'absence de sortie non détectée');
+  ok(validateMap(['###', '#S#', '#X#', '###'], { count: 1 }).length === 1, "manque d'emplacements non détecté");
 });
 
 /** Lance tous les tests. Renvoie { passed, failed: [{ name, error }] }. */

@@ -30,15 +30,19 @@ game.debug = {
   render: () => render(),
   /** Charge chaque étage, le fait tourner quelques secondes et signale tout problème. */
   selfTest: (frames = 120) => {
-    const report = { floors: 0, problems: [] };
+    const report = { floors: 0, enemies: 0, bosses: 0, problems: [] };
     const was = game.debug.instant;
     game.debug.instant = true;
     LEVELS.forEach((lv, li) => lv.floors.forEach((fl, fi) => {
       const where = `${lv.name}, étage ${fi + 1}`;
       try {
         game.debug.start('m4', 'normal', li, fi);
-        const expected = fl.count + (fl.bosses?.length || 0);
-        if (game.enemies.length !== expected) report.problems.push(`${where} : ${game.enemies.length} ennemis au lieu de ${expected}`);
+        const bosses = game.enemies.filter(e => e.boss).length;
+        const normals = game.enemies.length - bosses;
+        if (bosses !== (fl.bosses?.length || 0)) report.problems.push(`${where} : ${bosses} boss au lieu de ${fl.bosses?.length || 0}`);
+        if (!normals) report.problems.push(`${where} : aucun ennemi`);
+        report.enemies += normals;
+        report.bosses += bosses;
         for (let i = 0; i < frames; i++) { game.player.health = 100; game.debug.step(1); }
         render();
         if (game.state !== 'play') report.problems.push(`${where} : état « ${game.state} » après ${frames} images`);
