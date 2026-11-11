@@ -8,6 +8,7 @@ import { updateCamera } from './combat.js';
 import { buildGunModel, disposeGunModel } from './gunmodel.js';
 import { EXTRA_TYPES, specialists } from './roster.js';
 import { applyRunMods, choosePerk, bankRun } from './perkflow.js';
+import { levelName, floorName } from './texts.js';
 import { showScreen, showEnd } from '../ui/screens.js';
 import { MIN_SPAWN_DIST } from '../core/grid.js';
 import { generateFloor } from '../core/floorgen.js';
@@ -48,7 +49,7 @@ export function startLevel(floorIdx = 0) {
   showScreen(null);
   music.setPaused(false);
   music.setIntensity(1);
-  transition(lv.name.toUpperCase(), lv.floors[floorIdx].name, () => loadFloor(run.levelIdx, floorIdx));
+  transition(levelName(lv).toUpperCase(), floorName(lv, floorIdx), () => loadFloor(run.levelIdx, floorIdx));
 }
 
 function clearFloor() {
@@ -118,7 +119,7 @@ export function loadFloor(levelIdx, floorIdx) {
   game.flow = L.flowFrom(p.pos.x, p.pos.z);
   game.flowTimer = 0;
   L.setLocked(game.enemies.some(e => e.boss));
-  hud.floor(`${lv.name} · ${fl.name}`);
+  hud.floor(`${levelName(lv)} · ${floorName(lv, floorIdx)}`);
   if (game.ws) updateCamera(0);
 }
 
@@ -148,7 +149,7 @@ function transition(title, sub, load) {
 export function nextFloor() {
   const run = game.run, lv = LEVELS[run.levelIdx], next = run.floorIdx + 1;
   sfx.stairs();
-  choosePerk(() => transition(lv.name.toUpperCase(), lv.floors[next].name, () => loadFloor(run.levelIdx, next)));
+  choosePerk(() => transition(levelName(lv).toUpperCase(), floorName(lv, next), () => loadFloor(run.levelIdx, next)));
 }
 
 function equip(w) {
@@ -194,7 +195,7 @@ export function levelComplete() {
   ];
   run.levelIdx++;
   game.endAction = 'next';
-  const title = t('end.levelDone', { name: lv.name.toUpperCase() });
+  const title = t('end.levelDone', { name: levelName(lv).toUpperCase() });
   setTimeout(() => showEnd(title, true, rows, t('end.total'), st.points, '', t('end.next')), 400);
 }
 
@@ -206,7 +207,7 @@ export function endRun(success) {
   const { prev, isBest } = save.submitScore(d.id, st.points);
   const lv = LEVELS[run.levelIdx];
   const rows = [
-    success ? [t('row.totalTime'), fmtTime(st.time)] : [t('row.reached'), `${lv.name} · ${lv.floors[run.floorIdx].name}`],
+    success ? [t('row.totalTime'), fmtTime(st.time)] : [t('row.reached'), `${levelName(lv)} · ${floorName(lv, run.floorIdx)}`],
     ...(success ? [] : [[t('row.survival'), fmtTime(st.time)]]),
     [t('row.kills'), st.kills],
     [t('row.bosses'), `${st.bosses} / ${TOTAL_BOSSES}`],
