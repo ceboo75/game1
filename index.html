@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07060b">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Extraction</title>
+<title>Sütçü İmam Escape</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <div id="app">
@@ -18,11 +19,11 @@
     <div id="dmgLayer"></div>
 
     <div id="topLeft">
-      <button id="btnPause" aria-label="Pause">II</button>
+      <button id="btnPause" data-i18n-aria="aria.pause" aria-label="Pause">II</button>
       <div id="hpWrap"><div id="hpFill"></div></div>
     </div>
     <div id="topCenter">
-      <div id="objective">Atteins la sortie</div>
+      <div id="objective" data-i18n="hud.objective.exit">Atteins la sortie</div>
       <div id="floorLabel"></div>
       <div id="enemyCount"></div>
       <div id="bossBar" class="hidden">
@@ -61,20 +62,20 @@
     </div>
     <div id="popups"></div>
 
-    <div id="ammo"><span id="ammoCur">0</span><span id="ammoMax">/0</span><div id="reloadTxt">RECHARGEMENT</div></div>
+    <div id="ammo"><span id="ammoCur">0</span><span id="ammoMax">/0</span><div id="reloadTxt" data-i18n="hud.reload">RECHARGEMENT</div></div>
 
     <div id="touch">
       <div id="joyBase"><div id="joyKnob"></div></div>
-      <button id="btnFireL" aria-label="Tirer (gauche)">
+      <button id="btnFireL" data-i18n-aria="aria.fireL" aria-label="Tirer (gauche)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>
       </button>
-      <button id="btnReload" aria-label="Recharger">
+      <button id="btnReload" data-i18n-aria="aria.reload" aria-label="Recharger">
         <svg viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4h-4"/></svg>
       </button>
-      <button id="btnAim" aria-label="Viser">
+      <button id="btnAim" data-i18n-aria="aria.aim" aria-label="Viser">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.5" class="fill"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
       </button>
-      <button id="btnFire" aria-label="Tirer">
+      <button id="btnFire" data-i18n-aria="aria.fire" aria-label="Tirer">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>
       </button>
     </div>
@@ -82,9 +83,9 @@
 
   <!-- Écran titre -->
   <div id="screenMenu" class="screen">
-    <div class="title">EXTRACTION</div>
-    <div class="subtitle">Villa · Hôtel · Tour</div>
-    <div class="tapHint">Touche l'écran pour commencer</div>
+    <div class="title">SÜTÇÜ İMAM ESCAPE</div>
+    <div class="subtitle" data-i18n="menu.subtitle">Villa · Hôtel · Tour</div>
+    <div class="tapHint" data-i18n="menu.tap">Touche l'écran pour commencer</div>
     <div class="best" id="bestScore"></div>
   </div>
 
@@ -99,7 +100,7 @@
     </div>
     <div class="selectWrap">
       <div class="selectLeft">
-        <div class="selectHead">Choisis ton arme</div>
+        <div class="selectHead" data-i18n="select.head">Choisis ton arme</div>
         <div id="weaponGrid"></div>
       </div>
       <div class="selectRight">
@@ -107,16 +108,16 @@
         <div id="wType"></div>
         <div id="wBars"></div>
         <div id="wDesc"></div>
-        <button id="btnGo" class="btn">ENTRER</button>
+        <button id="btnGo" class="btn" data-i18n="select.go">ENTRER</button>
       </div>
     </div>
   </div>
 
   <!-- Pause -->
   <div id="screenPause" class="screen hidden">
-    <div class="title small">PAUSE</div>
-    <button id="btnResume" class="btn">REPRENDRE</button>
-    <button id="btnQuit" class="btn ghost">ABANDONNER</button>
+    <div class="title small" data-i18n="pause.title">PAUSE</div>
+    <button id="btnResume" class="btn" data-i18n="pause.resume">REPRENDRE</button>
+    <button id="btnQuit" class="btn ghost" data-i18n="pause.quit">ABANDONNER</button>
   </div>
 
   <!-- Tableau des scores -->
@@ -127,10 +128,10 @@
         <table id="endTable"></table>
       </div>
       <div class="endRight">
-        <div class="endPtsLabel">POINTS</div>
+        <div class="endPtsLabel" data-i18n="end.points">POINTS</div>
         <div id="endPoints">0</div>
         <div id="endBest"></div>
-        <button id="btnAgain" class="btn">REJOUER</button>
+        <button id="btnAgain" class="btn" data-i18n="end.again">REJOUER</button>
       </div>
     </div>
   </div>
@@ -138,7 +139,7 @@
   <!-- Fondu entre les étages -->
   <div id="fade"><div id="fadeTitle"></div><div id="fadeSub"></div></div>
 
-  <div id="rotate"><div>Tourne ton téléphone<br><span>Le jeu se joue à l'horizontale</span></div></div>
+  <div id="rotate"><div><div data-i18n="rotate.title">Tourne ton téléphone</div><span data-i18n="rotate.sub">Le jeu se joue à l'horizontale</span></div></div>
 </div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>

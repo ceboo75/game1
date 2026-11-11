@@ -6,19 +6,22 @@ plugins {
 def buildNumber = (project.findProperty('versionCode') ?: '1') as Integer
 
 android {
+    // Paquet du code Java. Il reste inchangé : seul l'identifiant de l'appli ci-dessous est visible sur le téléphone.
     namespace 'com.extraction.jeu'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.extraction.jeu'
+        // Identifiant définitif de « Sütçü İmam Escape » (voir DECISIONS.md).
+        applicationId 'io.github.ceboo75.sutcuimamescape'
         minSdk 26
         targetSdk 34
         versionCode buildNumber
         versionName "1.0.${buildNumber}"
     }
 
-    // Clé créée une seule fois par GitHub puis conservée dans le dépôt :
-    // toutes les versions ont la même signature, on peut donc les installer par-dessus.
+    // Clé de test, créée une seule fois par GitHub puis conservée dans le dépôt :
+    // toutes les versions de test ont la même signature, on peut donc les installer par-dessus.
+    // Elle est publique : elle ne doit jamais servir pour le Play Store.
     signingConfigs {
         release {
             storeFile file('../extraction.jks')

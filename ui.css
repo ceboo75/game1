@@ -1,0 +1,87 @@
+/* Compléments de style chargés après style.css : titre du jeu, réglages, boutons réglables, atouts, progression, annonces. */
+
+/* Le nom du jeu est long : il doit tenir sur une ligne sur un téléphone à l'horizontale. */
+#screenMenu .title { font-size: clamp(26px, 6.6vw, 84px); letter-spacing: .14em; white-space: nowrap; }
+
+/* ---------- Boutons tactiles réglables (taille et opacité choisies dans les réglages) ---------- */
+#btnFire, #btnReload, #btnAim, #btnFireL {
+  transform: scale(var(--btn-scale, 1)); opacity: var(--btn-opacity, 1);
+}
+#btnFire { transform-origin: 100% 100%; }
+#btnFireL { transform-origin: 0 50%; }
+
+/* ---------- Accès aux réglages depuis l'écran titre ---------- */
+#btnSettings {
+  position: absolute; top: calc(var(--safe-t) + 6px); right: calc(var(--safe-r) + 6px);
+  width: 46px; height: 46px; border-radius: 10px;
+  background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .3);
+  display: flex; align-items: center; justify-content: center;
+}
+#btnSettings svg { width: 60%; height: 60%; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
+
+/* ---------- Écran titre : défi du jour et missions ---------- */
+.menuExtras { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+.menuExtras .btn { min-width: 0; padding: 8px 18px; font-size: 13px; border-color: var(--cyan); }
+#missions { font-size: 12px; opacity: .8; text-align: center; line-height: 1.5; }
+#missions .done { color: var(--green); }
+
+/* ---------- Écran de réglages ---------- */
+#screenSettings {
+  z-index: 20; justify-content: flex-start; gap: 8px;
+  padding: calc(var(--safe-t) + 8px) var(--safe-r) 12px var(--safe-l);
+  background: rgba(5, 3, 10, .96);
+}
+.setList { width: min(640px, 100%); display: flex; flex-direction: column; gap: 4px; }
+.setGroup {
+  margin-top: 8px; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: var(--cyan);
+}
+.setRow {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 62px; align-items: center; gap: 12px;
+  min-height: 40px; padding: 2px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 14px;
+}
+.setName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setVal { text-align: right; font-variant-numeric: tabular-nums; opacity: .85; }
+.setRow input[type=range] { width: 100%; height: 28px; accent-color: var(--pink); touch-action: pan-x; }
+.setRow input[type=checkbox] { width: 24px; height: 24px; justify-self: end; accent-color: var(--pink); }
+.setRow select {
+  width: 100%; height: 34px; padding: 0 8px; border-radius: 6px; font: inherit; color: #fff;
+  background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .3);
+}
+.setFoot { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+.setFoot .btn { min-width: 150px; padding: 10px 18px; font-size: 14px; }
+
+/* ---------- Choix d'un atout entre deux étages ---------- */
+#screenPerk { z-index: 20; gap: 14px; padding: 12px var(--safe-r) 12px var(--safe-l); background: rgba(5, 3, 10, .9); }
+.perkRow { display: flex; gap: 14px; width: min(860px, 100%); justify-content: center; align-items: stretch; }
+.perkCard {
+  flex: 1 1 0; min-width: 0; max-width: 270px; min-height: 130px; padding: 14px 12px; border-radius: 8px;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center;
+  border: 2px solid var(--cyan); background: rgba(34, 228, 255, .1); box-shadow: 0 0 14px rgba(34, 228, 255, .3);
+}
+.perkCard:active { background: rgba(34, 228, 255, .35); }
+.perkCard b { font-size: 16px; letter-spacing: .08em; text-transform: uppercase; }
+.perkCard span { font-size: 13px; opacity: .85; line-height: 1.35; }
+
+/* ---------- Armes pas encore débloquées, ou écartées par le défi du jour ---------- */
+.wcard.locked { opacity: .55; border-style: dashed; }
+.wcard.locked small { color: var(--gold); }
+.wcard:disabled { opacity: .25; }
+
+/* ---------- Fin de partie : partage ---------- */
+#btnShare { min-width: 0; padding: 8px 18px; font-size: 13px; margin-top: 6px; }
+
+/* ---------- Annonces en jeu : bâtiment, boss, consigne du tutoriel ---------- */
+#banner {
+  position: fixed; left: 50%; top: 26%; transform: translateX(-50%); z-index: 12; pointer-events: none;
+  width: min(620px, 86vw); text-align: center; display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 16px; border-radius: 8px; background: rgba(5, 3, 10, .6);
+  border-top: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan);
+}
+#banner.boss { border-color: var(--pink); }
+#banner b { font-size: clamp(18px, 3.4vw, 30px); letter-spacing: .16em; text-transform: uppercase; }
+#banner span { font-size: 13px; opacity: .85; line-height: 1.35; }
+#hint {
+  position: fixed; left: 50%; bottom: calc(var(--safe-b, 0px) + 16px); transform: translateX(-50%); z-index: 12;
+  pointer-events: none; max-width: 46vw; text-align: center; font-size: 14px; font-weight: 700; line-height: 1.3;
+  padding: 8px 14px; border-radius: 8px; background: rgba(5, 3, 10, .75); border: 1px solid var(--gold); color: var(--gold);
+}
