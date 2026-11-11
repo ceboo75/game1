@@ -5,6 +5,8 @@ import { game, hud, sfx, music, input, settings, fmtNum, wrapAngle } from './sta
 import { camera, worldFlash, gunHolder, GUN_POS, fx, applyFov } from './view.js';
 import { nextFloor, levelComplete, endRun } from './floor.js';
 import { consumeGyro, autoFire } from './controls.js';
+import { updateProps, shootables } from './props.js';
+import { impact } from './cues.js';
 import { COMBO_WINDOW, HEAD_DMG, comboMult, nextCombo, killPoints } from '../core/score.js';
 import { vibrate } from '../core/platform.js';
 import { t } from '../core/i18n.js';
@@ -46,6 +48,7 @@ export function update(dt) {
   game.time += dt;
   game.stats.time += dt;
   const p = game.player, w = game.weapon, ws = game.ws, L = game.level;
+  updateProps();
 
   // visée : glissé du doigt (réglé par les sensibilités et l'aide à la visée), plus le gyroscope s'il est activé
   const assist = aimAssist();
@@ -195,8 +198,19 @@ function startReload() {
   sfx.click(1800, 0.3);
 }
 
+/**
+ * Inflige des dégâts à un ennemi au nom du joueur (tir, explosion) et compte l'élimination s'il en meurt.
+ * @returns vrai si l'ennemi est mort
+ */
+export function hitEnemy(enemy, dmg, head = false) {
+  const p = game.player.pos;
+  if (!enemy.damage(dmg, p.x, p.z)) return false;
+  onKill(enemy, head);
+  return true;
+}
+
 function fire() {
-  const w = game.weapon, ws = game.ws, p = game.player, st = game.stats;
+  const w = game.weapon, ws = game.ws, st = game.stats;
   ws.ammo--;
   ws.cd = 60 / w.rpm;
   ws.flashT = 0.045;
@@ -217,7 +231,7 @@ function fire() {
   camera.getWorldDirection(fwd);
   right.setFromMatrixColumn(camera.matrixWorld, 0);
   up.setFromMatrixColumn(camera.matrixWorld, 1);
-  const targets = [game.level.walls, game.level.windows, game.level.covers];
+  const targets = [game.level.walls, game.level.windows, game.level.covers, ...shootables()];
   for (const e of game.enemies) {
     if (!e.alive) continue;
     e.root.updateMatrixWorld(true); // position exacte de cette image, pas celle du dernier rendu
@@ -227,6 +241,8 @@ function fire() {
   const muzzle = camera.position.clone().addScaledVector(right, 0.16 * (1 - k)).addScaledVector(up, -0.12 + 0.06 * k).addScaledVector(fwd, 0.5);
 
   const dmgByEnemy = new Map();
+  const shotProps = new Set();
+  let wallHit = null;
   for (let i = 0; i < w.pellets; i++) {
     const a = THREE.MathUtils.degToRad(ws.spread) * Math.sqrt(Math.random());
     const ang = Math.random() * Math.PI * 2, r = Math.tan(a);
@@ -248,15 +264,19 @@ function fire() {
       fx.sparks(hit.point, head ? 6 : 4, head ? 0xffcc33 : 0xa0102a, 2.2);
     } else {
       fx.sparks(hit.point, 4, 0xffd9a0, 2.5, hit.face ? hit.face.normal : null);
+      if (ud.onShot) shotProps.add(ud);
+      else wallHit ??= hit.distance;
     }
   }
+  if (wallHit !== null) impact(sfx, wallHit); // un seul bruit d'impact par tir, même au fusil à pompe
 
   if (dmgByEnemy.size) st.hits++;
   let killed = false;
   for (const [e, rec] of dmgByEnemy) {
-    if (e.damage(rec.dmg, p.pos.x, p.pos.z)) { onKill(e, rec.head); killed = true; }
+    if (hitEnemy(e, rec.dmg, rec.head)) killed = true;
   }
   if (dmgByEnemy.size && !killed) { hud.hitmarker('hit'); sfx.hit(); }
+  for (const ud of shotProps) ud.onShot(); // après les tirs directs : une explosion peut tuer à son tour
 
   const steady = 1 - 0.35 * k; // épaulé, l'arme est mieux tenue
   ws.spread = Math.min(w.maxSpread * (1 - (1 - w.adsSpread) * k), ws.spread + w.spreadPerShot * steady);
