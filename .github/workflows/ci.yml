@@ -1,0 +1,78 @@
+# Vérifie le jeu à chaque envoi (tests), puis fabrique et publie l'APK de test quand c'est la branche main.
+name: Tests et APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tests de logique
+        run: node tests/run.mjs
+
+      - name: Bibliothèque 3D (Three.js 0.170.0)
+        run: |
+          mkdir -p vendor
+          curl -fsSL https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js -o vendor/three.module.js
+
+      - name: Test de fumée (tous les étages dans un navigateur sans écran)
+        run: |
+          npm install --no-save playwright@1
+          npx playwright install --with-deps chromium
+          node tests/smoke.mjs
+
+  apk:
+    needs: tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Bibliothèque 3D (Three.js 0.170.0)
+        run: |
+          mkdir -p vendor
+          curl -fsSL https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js -o vendor/three.module.js
+
+      - name: Copie du jeu dans l'appli
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r index.html style.css ui.css src vendor android/app/src/main/assets/www/
+
+      - name: Fabrication de l'APK
+        run: gradle -p android assembleRelease -PversionCode=${{ github.run_number }} --no-daemon --stacktrace
+
+      - name: Nom du fichier
+        run: cp android/app/build/outputs/apk/release/app-release.apk sutcu-imam-escape.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sutcu-imam-escape-apk
+          path: sutcu-imam-escape.apk
+
+      - name: Publication dans les Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "test-${{ github.run_number }}" sutcu-imam-escape.apk \
+            --title "Sütçü İmam Escape - version de test ${{ github.run_number }}" \
+            --notes "APK Android de test. Télécharge sutcu-imam-escape.apk sur le téléphone puis ouvre-le pour l'installer."
