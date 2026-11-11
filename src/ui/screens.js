@@ -1,10 +1,11 @@
 // Écrans hors partie : titre, choix de l'arme, pause, tableau des scores.
-import { WEAPONS, weaponBars } from '../weapons.js';
+import { WEAPONS, weaponBars, weaponById } from '../weapons.js';
 import { LEVELS, DIFFICULTIES, DIFF_ORDER } from '../levels.js';
 import { $, game, hud, music, input, save, fmtNum, weaponName, diffName, audioOn } from '../game/state.js';
 import { newRun, startLevel, loadFloor, endRun } from '../game/floor.js';
+import { UNLOCK_COST, MASTERY, masteryLevel } from '../core/perks.js';
 import { enterFullscreen } from '../core/platform.js';
-import { t, applyDom } from '../core/i18n.js';
+import { t, tr, applyDom } from '../core/i18n.js';
 
 const screens = { menu: $('screenMenu'), select: $('screenSelect'), pause: $('screenPause'), end: $('screenEnd') };
 
@@ -57,32 +58,48 @@ function renderSelect() {
   const chips = $('diffChips');
   chips.innerHTML = '';
   for (const id of DIFF_ORDER) {
-    const d = DIFFICULTIES[id];
-    if (game.run && d !== game.diff) continue;
+    const d = DIFFICULTIES[id], selected = id === game.diff.id;
+    if (game.run && !selected) continue;
     const b = document.createElement('button');
-    b.className = `chip ${id}` + (d === game.diff ? ' sel' : '') + (game.run ? ' locked' : '');
+    b.className = `chip ${id}` + (selected ? ' sel' : '') + (game.run ? ' locked' : '');
     b.textContent = diffName(d).toUpperCase();
     b.addEventListener('click', () => { game.diff = d; renderSelect(); });
     chips.appendChild(b);
   }
 
+  // armes : celles qui ne sont pas encore débloquées affichent leur prix en crédits
+  document.querySelector('.selectHead').textContent =
+    `${t('select.head')} · ${tr('select.credits', '{n} crédits', { n: fmtNum(save.data.credits) })}`;
   const grid = $('weaponGrid');
   grid.innerHTML = '';
   for (const w of WEAPONS) {
+    const locked = !save.isUnlocked(w.id);
     const b = document.createElement('button');
-    b.className = 'wcard' + (w.id === game.weapon.id ? ' sel' : '');
-    b.innerHTML = `<b>${weaponName(w)}</b><small>${w.type}</small>`;
+    b.className = 'wcard' + (w.id === game.weapon.id ? ' sel' : '') + (locked ? ' locked' : '');
+    b.innerHTML = `<b>${weaponName(w)}</b><small>${locked ? tr('select.cost', '{n} crédits', { n: UNLOCK_COST[w.id] }) : w.type}</small>`;
     b.addEventListener('click', () => { game.weapon = w; renderSelect(); });
     grid.appendChild(b);
   }
-  const w = game.weapon;
+
+  // fiche de l'arme : toujours ses valeurs d'origine, les atouts s'appliquent en partie
+  const w = weaponById(game.weapon.id);
+  const locked = !save.isUnlocked(w.id), cost = UNLOCK_COST[w.id];
+  const kills = save.kills(w.id), level = masteryLevel(kills);
+  const next = MASTERY[level];
+  const mastery = next
+    ? tr('select.mastery', 'Maîtrise {level}/{max} · prochain accessoire à {n} éliminations ({kills})', { level, max: MASTERY.length, n: next.kills, kills })
+    : tr('select.masteryMax', 'Maîtrise complète');
   $('wName').textContent = weaponName(w);
   $('wType').textContent = t('select.zoom', { type: w.type, zoom: String(w.zoom).replace('.', ',') });
-  $('wDesc').textContent = w.desc;
+  $('wDesc').textContent = `${w.desc} ${mastery}.`;
   $('wBars').innerHTML = weaponBars(w).map(([label, v, txt]) =>
     `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${(v * 100).toFixed(0)}%"></div></div><span class="val">${txt}</span></div>`
   ).join('');
-  $('btnGo').textContent = first ? t('select.go') : t('select.goLevel', { name: lv.name.toUpperCase() });
+  const go = $('btnGo');
+  go.classList.toggle('ghost', locked && save.data.credits < cost);
+  if (!locked) go.textContent = first ? t('select.go') : t('select.goLevel', { name: lv.name.toUpperCase() });
+  else if (save.data.credits >= cost) go.textContent = tr('select.unlock', 'DÉBLOQUER · {n}', { n: cost });
+  else go.textContent = tr('select.missing', 'IL MANQUE {n} CRÉDITS', { n: cost - save.data.credits });
 }
 
 function updateMenuBest() {
@@ -110,11 +127,19 @@ export function showEnd(title, win, rows, ptsLabel, points, best, btn) {
 /** Branche les boutons des écrans. Appelé une fois au démarrage. */
 export function initScreens() {
   applyDom();
+  // une arme mémorisée mais pas débloquée (sauvegarde modifiée) ne doit pas être présélectionnée
+  if (!save.isUnlocked(game.weapon.id)) game.weapon = weaponById('m4');
   screens.menu.addEventListener('pointerup', () => { audioOn(); enterFullscreen(); goSelect(); });
   $('btnGo').addEventListener('click', () => {
     audioOn();
     enterFullscreen();
-    save.set('lastWeapon', game.weapon.id);
+    const id = game.weapon.id;
+    if (!save.isUnlocked(id)) { // arme verrouillée : le bouton l'achète si les crédits suffisent
+      save.unlock(id);
+      renderSelect();
+      return;
+    }
+    save.set('lastWeapon', id);
     if (!game.run) newRun();
     startLevel(0);
   });

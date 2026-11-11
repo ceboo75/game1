@@ -7,10 +7,11 @@ import { scene, gunHolder, fx, applyTheme, render } from './view.js';
 import { updateCamera } from './combat.js';
 import { buildGunModel, disposeGunModel } from './gunmodel.js';
 import { EXTRA_TYPES, specialists } from './roster.js';
+import { applyRunMods, choosePerk, bankRun } from './perkflow.js';
 import { showScreen, showEnd } from '../ui/screens.js';
 import { MIN_SPAWN_DIST } from '../core/grid.js';
 import { generateFloor } from '../core/floorgen.js';
-import { t } from '../core/i18n.js';
+import { t, tr } from '../core/i18n.js';
 
 const TOTAL_BOSSES = LEVELS.reduce((n, l) => n + l.floors.reduce((m, f) => m + (f.bosses?.length || 0), 0), 0);
 const MENU_SEED = 1; // l'étage affiché derrière les menus est toujours le même
@@ -21,7 +22,12 @@ function newStats() {
 
 /** @param seed graine des étages de la partie ; tirée au hasard si elle n'est pas fournie */
 export function newRun(seed = Math.floor(Math.random() * 0x7fffffff) + 1) {
-  game.run = { levelIdx: 0, floorIdx: 0, levelStats: null, weapons: [], seed };
+  game.run = {
+    levelIdx: 0, floorIdx: 0, levelStats: null, weapons: [], seed,
+    perks: [],          // atouts pris pendant la partie
+    bankedPoints: 0,    // points déjà convertis en crédits
+    pendingKills: {},   // éliminations par arme, pas encore versées à la maîtrise
+  };
   game.stats = newStats();
   game.combo = { count: 0, last: -99 };
   game.time = 0;
@@ -32,6 +38,7 @@ export function newRun(seed = Math.floor(Math.random() * 0x7fffffff) + 1) {
 /** Lance le niveau courant (après le choix de l'arme). */
 export function startLevel(floorIdx = 0) {
   const run = game.run, lv = LEVELS[run.levelIdx];
+  applyRunMods(); // l'arme choisie reçoit les atouts de la partie et ses accessoires de maîtrise
   equip(game.weapon);
   run.weapons[run.levelIdx] = weaponName(game.weapon);
   run.levelStats = { ...game.stats, bestCombo: 0 };
@@ -137,10 +144,11 @@ function transition(title, sub, load) {
   }, 380);
 }
 
+/** Étage terminé : le joueur choisit un atout, puis descend. */
 export function nextFloor() {
   const run = game.run, lv = LEVELS[run.levelIdx], next = run.floorIdx + 1;
   sfx.stairs();
-  transition(lv.name.toUpperCase(), lv.floors[next].name, () => loadFloor(run.levelIdx, next));
+  choosePerk(() => transition(lv.name.toUpperCase(), lv.floors[next].name, () => loadFloor(run.levelIdx, next)));
 }
 
 function equip(w) {
@@ -164,6 +172,8 @@ function leaveGame() {
 }
 
 const comboText = n => (n > 1 ? t('row.comboKills', { n }) : '-');
+/** Ligne du tableau de fin : crédits versés à la progression permanente. */
+const creditsRow = () => [tr('row.credits', 'Crédits gagnés'), `+${fmtNum(bankRun())}`];
 
 /** Bâtiment terminé : bilan du niveau, puis niveau suivant (ou victoire finale). */
 export function levelComplete() {
@@ -180,6 +190,7 @@ export function levelComplete() {
     [t('row.accuracy'), acc(st.hits - s0.hits, st.shots - s0.shots)],
     [t('row.bestCombo'), comboText(s0.bestCombo)],
     [t('row.levelPoints'), fmtNum(st.points - s0.points)],
+    creditsRow(),
   ];
   run.levelIdx++;
   game.endAction = 'next';
@@ -203,6 +214,7 @@ export function endRun(success) {
     [t('row.accuracy'), acc(st.hits, st.shots)],
     [t('row.bestCombo'), comboText(st.bestCombo)],
     [t('row.difficulty'), diffName(d)],
+    creditsRow(),
   ];
   game.endAction = 'again';
   const best = isBest ? t('end.newBest', { diff: diffName(d) }) : t('end.best', { diff: diffName(d), points: fmtNum(prev) });

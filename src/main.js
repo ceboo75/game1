@@ -8,6 +8,7 @@ import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from
 import { updateViewmodel } from './game/viewmodel.js';
 import { updateAmbience } from './game/ambience.js';
 import { updateDoors, doorState } from './game/doors.js';
+import { updatePerks } from './game/perkflow.js';
 import { applyQuality, frameGate, perfFrame, perfState } from './game/perf.js';
 import { newRun, startLevel } from './game/floor.js';
 import { pause, menuBackdrop, initScreens } from './ui/screens.js';
@@ -21,17 +22,16 @@ game.alertNear = alertNear;
 hooks.pause = pause;
 window.game = game; // accès console pour le débogage
 
-/** Une image de jeu : les portes, la simulation, puis ce qui en découle (animation de l'arme, sons d'ambiance). */
+// Ce qui tourne à chaque image de jeu, dans l'ordre : les portes, la simulation, puis ce qui en découle.
+// Un module chargé plus tard peut s'ajouter à cette liste (game.systems.push).
+game.systems = [updateDoors, update, updateViewmodel, updateAmbience, updatePerks];
 function tick(dt) {
-  updateDoors(dt);
-  update(dt);
-  updateViewmodel(dt);
-  updateAmbience(dt);
+  for (const system of game.systems) system(dt);
 }
 
 // ---------------------------------------------------------------- crochets de test
 game.debug = {
-  instant: false, // transitions immédiates (tests automatisés)
+  instant: false, // transitions immédiates et aucun écran intermédiaire (tests automatisés)
   start: (weaponId = 'm4', diffId = 'normal', levelIdx = 0, floorIdx = 0, seed = 1) => {
     game.weapon = weaponById(weaponId);
     game.diff = DIFFICULTIES[diffId];
