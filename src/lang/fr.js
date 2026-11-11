@@ -1,4 +1,6 @@
 // Textes français. Les noms propres (armes) sont communs à toutes les langues.
+// Les textes du contenu (bâtiments, armes, atouts, missions...) restent écrits en français dans leurs fichiers :
+// ils servent de repli, et seules les autres langues les redéfinissent par identifiant.
 export default {
   'menu.subtitle': 'Villa · Hôtel · Tour',
   'menu.tap': "Touche l'écran pour commencer",
@@ -76,6 +78,8 @@ export default {
   'hud.bossDown.f': '{name} est éliminée',
   'hud.wayClear': '{down} · la voie est libre',
   'hud.reload': 'RECHARGEMENT',
+  'hud.enemies': 'Ennemis : {left} / {total}',
+  'hud.combo': 'COMBO x{x}',
 
   'popup.boss': 'BOSS',
   'popup.bossHead': 'BOSS · HEADSHOT',
