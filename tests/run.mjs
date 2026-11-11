@@ -3,6 +3,7 @@ import { cases, runAll } from './cases.js';
 import './settings.cases.js';
 import './tactics.cases.js';
 import './floorgen.cases.js';
+import './perks.cases.js';
 
 const { passed, failed } = runAll();
 for (const f of failed) console.error(`ÉCHEC  ${f.name}\n       ${f.error}`);
