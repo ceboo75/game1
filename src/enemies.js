@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { ENEMY_WEAPONS } from './levels.js';
 import { Body } from './game/body.js';
+import { ModelBody } from './game/modelbody.js';
+import { modelOf } from './game/assets.js';
 import { AttackTokens, MAX_SHOOTERS } from './core/tactics.js';
 import { alertBark, telegraph, whizz } from './game/cues.js';
 import { tr } from './core/i18n.js';
@@ -44,6 +46,8 @@ export class Enemy {
     this.pos = new THREE.Vector3(x, 0, z);
     this.yaw = yaw;
     this.maxHp = this.hp = Math.round(def.hp * (opts.hpMul || 1));
+    this.dmgMul = opts.dmgMul || 1;     // la fuite rend les ennemis plus dangereux et plus rapides salle après salle
+    this.speedMul = opts.speedMul || 1;
     this.alive = true;
     this.state = 'idle';
     this.reaction = 0;
@@ -73,7 +77,9 @@ export class Enemy {
 
     const wp = ENEMY_WEAPONS[this.weaponKey];
     const gunLen = def.weapon === 'combo' ? 0.55 : wp.len;
-    this.body = new Body(def, gunLen, def.weapon === 'lmg');
+    // modèle fourni par l'auteur s'il existe (assets/manifest.json), sinon le corps construit par le code
+    const custom = modelOf(`enemies:${this.boss ? this.key : def.id}`);
+    this.body = custom ? new ModelBody(def, custom) : new Body(def, gunLen, def.weapon === 'lmg');
     const r = this.root = this.body.root;
 
     // Zones de touche invisibles (un peu plus larges que le modèle : plus confortable au tactile).
@@ -208,8 +214,8 @@ export class Enemy {
     if (this.def.weapon === 'combo' && this.burst <= 0 && this.windup <= 0) this.weaponKey = dist < 8 ? 'shotgun' : 'lmg';
     const wp = ENEMY_WEAPONS[this.weaponKey];
 
-    const fast = this.enraged ? 1.2 : 1;
-    let mx = 0, mz = 0, speed = this.def.speed * 0.45 * fast;
+    const fast = this.enraged ? 1.2 : 1, run = this.def.speed * this.speedMul;
+    let mx = 0, mz = 0, speed = run * 0.45 * fast;
     const approach = !this.hasLOS || dist > this.prefDist;
     // prudent : file à l'abri juste après sa rafale dangereuse, le temps de pouvoir en retenter une
     const hiding = this.cautious && this.tokenCd > 0.3 && this.windup <= 0 && !this.accurate;
@@ -220,11 +226,11 @@ export class Enemy {
       // immobile pendant la visée laser
     } else if (hiding && this.cover) {
       mx = this.cover.x - this.pos.x; mz = this.cover.z - this.pos.z;
-      speed = this.def.speed;
+      speed = run;
       if (Math.hypot(mx, mz) < 0.3) mx = mz = 0;
     } else if (approach) {
       const n = g.level.nextStep(this.pos.x, this.pos.z, g.flow);
-      if (n) { mx = n.x - this.pos.x; mz = n.z - this.pos.z; speed = this.def.speed * fast; }
+      if (n) { mx = n.x - this.pos.x; mz = n.z - this.pos.z; speed = run * fast; }
     } else {
       this.strafeTimer -= dt;
       if (this.strafeTimer <= 0) {
@@ -360,7 +366,7 @@ export class Enemy {
       if (g.player.moving) chance *= 0.7;
       chance = Math.min(0.95, chance);
     }
-    let dmg = g.diff.enemyDmg * wp.dmg;
+    let dmg = g.diff.enemyDmg * wp.dmg * this.dmgMul;
     if (wp.close) dmg *= dist < 6 ? 2.6 : dist < 10 ? 1.4 : 0.5;
     const pellets = wp.close ? 4 : 1;
     const hit = Math.random() < chance;

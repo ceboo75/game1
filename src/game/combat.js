@@ -1,11 +1,11 @@
 // Boucle de jeu : déplacement, visée, tir, dégâts, score et caméra.
 import * as THREE from 'three';
-import { CELL } from '../level.js';
+import { CELL } from '../world.js';
 import { game, hud, sfx, music, input, settings, fmtNum, wrapAngle } from './state.js';
 import { camera, worldFlash, gunHolder, GUN_POS, fx, applyFov } from './view.js';
-import { nextFloor, levelComplete, endRun } from './floor.js';
+import { endRun, onKill as runKill } from './run.js';
+import { bossTitle } from './texts.js';
 import { consumeGyro, autoFire } from './controls.js';
-import { updateProps, shootables } from './props.js';
 import { impact } from './cues.js';
 import { COMBO_WINDOW, HEAD_DMG, comboMult, nextCombo, killPoints } from '../core/score.js';
 import { vibrate } from '../core/platform.js';
@@ -48,7 +48,6 @@ export function update(dt) {
   game.time += dt;
   game.stats.time += dt;
   const p = game.player, w = game.weapon, ws = game.ws, L = game.level;
-  updateProps();
 
   // visée : glissé du doigt (réglé par les sensibilités et l'aide à la visée), plus le gyroscope s'il est activé
   const assist = aimAssist();
@@ -78,43 +77,22 @@ export function update(dt) {
   updateWeapon(dt, input.firing || autoFire(dt));
   for (const e of game.enemies) e.update(dt, game);
   fx.update(dt);
-  L.update(dt);
   if (game.state !== 'play') return; // mort pendant la mise à jour des ennemis
 
   if (game.time - p.lastHurt > game.diff.regenDelay) p.health = Math.min(100, p.health + game.diff.regenRate * dt);
   if (game.time - game.combo.last > COMBO_WINDOW) game.combo.count = 0;
 
-  // escalier / sortie
-  const goal = L.goalAt(p.pos.x, p.pos.z);
-  if (goal) {
-    if (L.locked) {
-      if (game.time - game.lastDenied > 2.5) {
-        game.lastDenied = game.time;
-        sfx.denied();
-        const boss = game.enemies.find(e => e.boss && e.alive);
-        hud.toast(t('hud.denied', { name: boss ? boss.name : t('hud.theBoss') }), 'red');
-      }
-    } else if (goal === 'D') { nextFloor(); return; }
-    else { levelComplete(); return; }
-  }
-
-  // interface
-  const st = game.stats;
+  // interface (score, salle, compte à rebours et objectif : voir ui/runhud.js et run.js)
   hud.health(p.health);
   hud.ammoState(ws.ammo, w.mag, ws.reloading);
-  hud.scoreValue(st.points);
   const left = COMBO_WINDOW - (game.time - game.combo.last);
   hud.comboState(game.combo.count >= 2 && left > 0 ? comboMult(game.combo.count) : 1, Math.max(0, left) / COMBO_WINDOW);
   const spreadPx = Math.tan(THREE.MathUtils.degToRad(ws.spread)) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * (window.innerHeight / 2);
   hud.crosshair(4 + spreadPx, assist);
   hud.aim(adsK(), w.reticle, ws.ads);
-  const normals = game.enemies.filter(e => !e.boss);
-  hud.enemies(normals.filter(e => e.alive).length, normals.length);
   const boss = game.enemies.find(e => e.boss && e.alive);
-  if (boss) hud.objective(t('hud.objective.boss', { name: boss.name }), 'boss');
-  else hud.objective(t(L.goalType === 'D' ? 'hud.objective.stairs' : 'hud.objective.exit'));
   const shownBoss = boss && (boss.state === 'alert' || boss.hasLOS) ? boss : null;
-  hud.boss(shownBoss ? `${shownBoss.name} · ${shownBoss.def.title}` : '', shownBoss ? Math.max(0, shownBoss.hp) / shownBoss.maxHp : null);
+  hud.boss(shownBoss ? `${shownBoss.name} · ${bossTitle(shownBoss.key, shownBoss.def)}` : '', shownBoss ? Math.max(0, shownBoss.hp) / shownBoss.maxHp : null);
   game.hurtFlash = Math.max(0, game.hurtFlash - dt * 3);
   hud.vignetteLevel(Math.min(1, Math.max(0, 1 - p.health / 60) * 0.75 + game.hurtFlash * 0.45));
 
@@ -231,7 +209,7 @@ function fire() {
   camera.getWorldDirection(fwd);
   right.setFromMatrixColumn(camera.matrixWorld, 0);
   up.setFromMatrixColumn(camera.matrixWorld, 1);
-  const targets = [game.level.walls, game.level.windows, game.level.covers, ...shootables()];
+  const targets = game.level.solids();
   for (const e of game.enemies) {
     if (!e.alive) continue;
     e.root.updateMatrixWorld(true); // position exacte de cette image, pas celle du dernier rendu
@@ -241,7 +219,6 @@ function fire() {
   const muzzle = camera.position.clone().addScaledVector(right, 0.16 * (1 - k)).addScaledVector(up, -0.12 + 0.06 * k).addScaledVector(fwd, 0.5);
 
   const dmgByEnemy = new Map();
-  const shotProps = new Set();
   let wallHit = null;
   for (let i = 0; i < w.pellets; i++) {
     const a = THREE.MathUtils.degToRad(ws.spread) * Math.sqrt(Math.random());
@@ -264,8 +241,7 @@ function fire() {
       fx.sparks(hit.point, head ? 6 : 4, head ? 0xffcc33 : 0xa0102a, 2.2);
     } else {
       fx.sparks(hit.point, 4, 0xffd9a0, 2.5, hit.face ? hit.face.normal : null);
-      if (ud.onShot) shotProps.add(ud);
-      else wallHit ??= hit.distance;
+      wallHit ??= hit.distance;
     }
   }
   if (wallHit !== null) impact(sfx, wallHit); // un seul bruit d'impact par tir, même au fusil à pompe
@@ -276,7 +252,6 @@ function fire() {
     if (hitEnemy(e, rec.dmg, rec.head)) killed = true;
   }
   if (dmgByEnemy.size && !killed) { hud.hitmarker('hit'); sfx.hit(); }
-  for (const ud of shotProps) ud.onShot(); // après les tirs directs : une explosion peut tuer à son tour
 
   const steady = 1 - 0.35 * k; // épaulé, l'arme est mieux tenue
   ws.spread = Math.min(w.maxSpread * (1 - (1 - w.adsSpread) * k), ws.spread + w.spreadPerShot * steady);
@@ -285,31 +260,25 @@ function fire() {
 }
 
 function onKill(enemy, head) {
-  const st = game.stats, c = game.combo, ls = game.run.levelStats;
+  const st = game.stats, c = game.combo;
   st.kills++;
   if (head) st.headshots++;
   if (enemy.boss) st.bosses++;
   c.count = nextCombo(c.count, game.time - c.last);
   c.last = game.time;
   st.bestCombo = Math.max(st.bestCombo, c.count);
-  ls.bestCombo = Math.max(ls.bestCombo, c.count);
+  // le multiplicateur de la salle est compris dans game.diff.scoreMul (voir run.js)
   const pts = killPoints({ boss: enemy.boss, head, combo: c.count, scoreMul: game.diff.scoreMul });
   st.points += pts;
   hud.hitmarker(head ? 'head' : 'kill');
-  const label = enemy.boss ? t(head ? 'popup.bossHead' : 'popup.boss') : head ? t('popup.head') : '';
-  hud.popup(fmtNum(pts), label, head || enemy.boss ? 'head' : 'kill');
+  hud.popup(fmtNum(pts), enemy.boss ? t('popup.boss') : '', head || enemy.boss ? 'head' : 'kill');
   if (head) sfx.headshot(c.count); else sfx.kill(c.count);
   vibrate(enemy.boss ? 150 : head ? 60 : 35);
-
   if (enemy.boss) {
     sfx.bossDown();
-    const stillBoss = game.enemies.some(e => e.boss && e.alive);
-    const down = t(enemy.def.fem ? 'hud.bossDown.f' : 'hud.bossDown.m', { name: enemy.name });
-    if (!stillBoss) {
-      game.level.setLocked(false);
-      hud.toast(t('hud.wayClear', { down }), 'gold', 2600);
-    } else hud.toast(down, 'gold', 2000);
+    hud.toast(t(enemy.def.fem ? 'hud.bossDown.f' : 'hud.bossDown.m', { name: enemy.name }), 'gold', 2200);
   }
+  runKill(enemy, head, c.count);
 }
 
 export function hurtPlayer(dmg, from) {

@@ -84,33 +84,14 @@
   <!-- Écran titre -->
   <div id="screenMenu" class="screen">
     <div class="title">SÜTÇÜ İMAM ESCAPE</div>
-    <div class="subtitle" data-i18n="menu.subtitle">Villa · Hôtel · Tour</div>
-    <div class="tapHint" data-i18n="menu.tap">Touche l'écran pour commencer</div>
-    <div class="best" id="bestScore"></div>
-  </div>
-
-  <!-- Choix de l'arme -->
-  <div id="screenSelect" class="screen hidden">
-    <div class="selectTop">
-      <div class="lvlInfo">
-        <div id="lvlName"></div>
-        <div id="lvlBrief"></div>
-      </div>
+    <div class="subtitle" data-i18n="menu.subtitle">Fuis. Ne t'arrête jamais.</div>
+    <!-- difficulté avec ses records, défi du jour : ces boutons ne lancent pas la partie -->
+    <div class="menuExtras">
       <div id="diffChips"></div>
+      <div id="menuDesc"></div>
+      <button id="btnDaily" class="btn ghost"></button>
     </div>
-    <div class="selectWrap">
-      <div class="selectLeft">
-        <div class="selectHead" data-i18n="select.head">Choisis ton arme</div>
-        <div id="weaponGrid"></div>
-      </div>
-      <div class="selectRight">
-        <div id="wName"></div>
-        <div id="wType"></div>
-        <div id="wBars"></div>
-        <div id="wDesc"></div>
-        <button id="btnGo" class="btn" data-i18n="select.go">ENTRER</button>
-      </div>
-    </div>
+    <div class="tapHint" data-i18n="menu.tap">Touche l'écran pour commencer</div>
   </div>
 
   <!-- Pause -->
@@ -128,10 +109,11 @@
         <table id="endTable"></table>
       </div>
       <div class="endRight">
-        <div class="endPtsLabel" data-i18n="end.points">POINTS</div>
+        <div class="endPtsLabel" data-i18n="end.points">SCORE</div>
         <div id="endPoints">0</div>
         <div id="endBest"></div>
         <button id="btnAgain" class="btn" data-i18n="end.again">REJOUER</button>
+        <button id="btnShare" class="btn ghost" data-i18n="share.button">PARTAGER</button>
       </div>
     </div>
   </div>
@@ -142,7 +124,7 @@
   <div id="rotate"><div><div data-i18n="rotate.title">Tourne ton téléphone</div><span data-i18n="rotate.sub">Le jeu se joue à l'horizontale</span></div></div>
 </div>
 
-<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

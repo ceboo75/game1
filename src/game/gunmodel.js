@@ -1,6 +1,8 @@
 // Modèles des armes du joueur, vus à la première personne. Le canon pointe vers -z.
 // Les pièces mobiles (culasse, chargeur, pompe, lame-chargeur) sont séparées pour être animées par viewmodel.js.
+// Si un modèle a été fourni pour l'arme (assets/manifest.json), il remplace celui construit ici.
 import * as THREE from 'three';
+import { modelOf } from './assets.js';
 
 const NEON = new THREE.MeshBasicMaterial({ color: 0xff2d78 });
 const BRASS = new THREE.MeshStandardMaterial({ color: 0xc9a23a, roughness: 0.4, metalness: 0.3, flatShading: true });
@@ -33,6 +35,8 @@ let FLASH_TEX = null;
  * parts { bolt, boltTravel, mag, pump, pumpTravel, clip } ; chaque pièce mobile garde sa position de repos dans userData.rest.
  */
 export function buildGunModel(w) {
+  const custom = modelOf(`weapons:${w.id}`);
+  if (custom) return fromModel(custom.scene, w);
   const m = w.model;
   const g = new THREE.Group();
   // métal peu réfléchissant : sans carte d'environnement, un métal fort paraîtrait noir
@@ -129,9 +133,27 @@ export function buildGunModel(w) {
     eject.set(0.045, 0.03, -L * 0.45);
   }
 
-  for (const p of [parts.bolt, parts.mag, parts.pump, parts.clip]) if (p) p.userData.rest = p.position.clone();
+  return finish(g, w, parts, eject, new THREE.Vector3(0, 0.012, muzzleZ));
+}
 
-  // Flamme de bouche (deux plans croisés, invisibles hors tir).
+/**
+ * Arme à partir d'un modèle fourni (voir docs/modeles.md) : pièces mobiles et repères trouvés par leur nom.
+ * Une pièce absente n'est simplement pas animée.
+ */
+function fromModel(scene, w) {
+  const g = new THREE.Group();
+  g.add(scene);
+  const find = name => scene.getObjectByName(name) || null;
+  const parts = { bolt: find('bolt'), boltTravel: 0.035, mag: find('mag'), pump: find('pump'), pumpTravel: 0.07, clip: find('clip') };
+  const eject = find('eject') ? find('eject').position.clone() : new THREE.Vector3(0.04, 0.03, -0.15);
+  const muzzle = find('muzzle') ? find('muzzle').position.clone() : new THREE.Vector3(0, 0.012, -0.6);
+  g.userData.custom = true;
+  return finish(g, w, parts, eject, muzzle);
+}
+
+/** Positions de repos des pièces mobiles, flamme de bouche (deux plans croisés, invisibles hors tir). */
+function finish(g, w, parts, eject, muzzle) {
+  for (const p of [parts.bolt, parts.mag, parts.pump, parts.clip]) if (p) p.userData.rest = p.position.clone();
   FLASH_TEX ??= flashTexture();
   const fm = new THREE.MeshBasicMaterial({ map: FLASH_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const flash = new THREE.Group();
@@ -139,18 +161,20 @@ export function buildGunModel(w) {
   const a = new THREE.Mesh(new THREE.PlaneGeometry(0.22 * s, 0.22 * s), fm);
   const b = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * s, 0.14 * s), fm);
   b.rotation.y = Math.PI / 2; b.position.z = -0.08 * s;
+  a.userData.flash = b.userData.flash = true;
   flash.add(a, b);
-  flash.position.set(0, 0.012, muzzleZ - 0.06);
+  flash.position.copy(muzzle).z -= 0.06;
   flash.visible = false;
   g.add(flash);
-
-  g.userData = { flash, parts, eject, kind: m.kind };
+  g.userData = { ...g.userData, flash, parts, eject, kind: w.model.kind };
   return g;
 }
 
 /** Libère la mémoire graphique d'un modèle qu'on remplace. */
 export function disposeGunModel(g) {
   g.traverse(o => {
+    // un modèle fourni partage géométries et matériaux avec l'original chargé : seule la flamme lui est propre
+    if (g.userData.custom && !o.userData.flash) return;
     if (!o.isMesh) return;
     o.geometry.dispose();
     if (!SHARED.has(o.material)) o.material.dispose(); // la texture de la flamme est partagée et conservée

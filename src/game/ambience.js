@@ -1,6 +1,5 @@
 // Sons liés à l'état du joueur : pas selon le sol, battement de cœur et son étouffé à faible vie.
 // Comme viewmodel.js, ce module observe l'état du jeu à chaque image au lieu de recevoir des événements.
-import { LEVELS } from '../levels.js';
 import { game, sfx } from './state.js';
 
 // Sol de chaque bâtiment et niveau de ses pas. Mesuré en sortie de mixage : sans cette correction, la moquette
@@ -22,7 +21,8 @@ export function updateAmbience(dt) {
   if (step !== lastStep) {
     lastStep = step;
     if (p.moving) {
-      const surface = SURFACES[game.run ? LEVELS[game.run.levelIdx].theme : 'villa'] || SURFACES.villa;
+      const room = game.world && game.world.roomAt(p.pos.x);
+      const surface = SURFACES[room ? room.theme : 'villa'] || SURFACES.villa;
       sfx.footstep(surface.kind, surface.level * (game.ws && game.ws.ads ? 0.6 : 1));
     }
   }

@@ -1,4 +1,4 @@
-/* Compléments de style chargés après style.css : titre du jeu, réglages, boutons réglables, atouts, progression, annonces. */
+/* Compléments de style chargés après style.css : écran titre, réglages, boutons réglables, affichage de la fuite, annonces. */
 
 /* Le nom du jeu est long : il doit tenir sur une ligne sur un téléphone à l'horizontale. */
 #screenMenu .title { font-size: clamp(26px, 6.6vw, 84px); letter-spacing: .14em; white-space: nowrap; }
@@ -19,11 +19,14 @@
 }
 #btnSettings svg { width: 60%; height: 60%; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
 
-/* ---------- Écran titre : défi du jour et missions ---------- */
-.menuExtras { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
-.menuExtras .btn { min-width: 0; padding: 8px 18px; font-size: 13px; border-color: var(--cyan); }
-#missions { font-size: 12px; opacity: .8; text-align: center; line-height: 1.5; }
-#missions .done { color: var(--green); }
+/* ---------- Écran titre : difficulté et records, défi du jour ---------- */
+.menuExtras { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 4px; }
+#diffChips { gap: 10px; }
+#diffChips .chip { display: flex; flex-direction: column; gap: 3px; min-width: 150px; padding: 8px 12px; }
+#diffChips .chip b { font-size: 14px; }
+#diffChips .chip small { font-size: 12px; font-weight: 600; letter-spacing: .02em; opacity: .85; font-variant-numeric: tabular-nums; }
+#menuDesc { font-size: 12px; opacity: .75; max-width: 520px; text-align: center; line-height: 1.35; }
+#btnDaily { min-width: 0; padding: 8px 18px; font-size: 13px; border-color: var(--cyan); }
 
 /* ---------- Écran de réglages ---------- */
 #screenSettings {
@@ -50,34 +53,59 @@
 .setFoot { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
 .setFoot .btn { min-width: 150px; padding: 10px 18px; font-size: 14px; }
 
-/* ---------- Choix d'un atout entre deux étages ---------- */
-#screenPerk { z-index: 20; gap: 14px; padding: 12px var(--safe-r) 12px var(--safe-l); background: rgba(5, 3, 10, .9); }
-.perkRow { display: flex; gap: 14px; width: min(860px, 100%); justify-content: center; align-items: stretch; }
-.perkCard {
-  flex: 1 1 0; min-width: 0; max-width: 270px; min-height: 130px; padding: 14px 12px; border-radius: 8px;
-  display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center;
-  border: 2px solid var(--cyan); background: rgba(34, 228, 255, .1); box-shadow: 0 0 14px rgba(34, 228, 255, .3);
-}
-.perkCard:active { background: rgba(34, 228, 255, .35); }
-.perkCard b { font-size: 16px; letter-spacing: .08em; text-transform: uppercase; }
-.perkCard span { font-size: 13px; opacity: .85; line-height: 1.35; }
-
-/* ---------- Armes pas encore débloquées, ou écartées par le défi du jour ---------- */
-.wcard.locked { opacity: .55; border-style: dashed; }
-.wcard.locked small { color: var(--gold); }
-.wcard:disabled { opacity: .25; }
-
-/* ---------- Fin de partie : partage ---------- */
+/* ---------- Fin de partie ---------- */
 #btnShare { min-width: 0; padding: 8px 18px; font-size: 13px; margin-top: 6px; }
 
-/* ---------- Annonces en jeu : bâtiment, boss, consigne du tutoriel ---------- */
+/* ---------- Affichage de la fuite : compte à rebours, salle et distance, arme ---------- */
+#runTimer {
+  position: absolute; left: 50%; top: calc(var(--safe-t) + 52px); transform: translateX(-50%);
+  font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: .04em;
+  text-shadow: 0 0 10px rgba(34, 228, 255, .7), 0 2px 3px #000;
+}
+#runTimer.low { color: #ff3a4a; text-shadow: 0 0 14px rgba(255, 40, 60, .9), 0 2px 3px #000; animation: blink .5s infinite alternate; }
+#runInfo {
+  position: absolute; left: 50%; top: calc(var(--safe-t) + 100px); transform: translateX(-50%);
+  font-size: 13px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; opacity: .9; text-shadow: 0 1px 2px #000;
+}
+#runWeapon {
+  position: absolute; right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 248px);
+  font-size: 12px; font-weight: 800; letter-spacing: .1em; text-align: right; color: var(--gold); text-shadow: 0 1px 2px #000;
+}
+
+/* ---------- Annonces : séries d'éliminations, nouvelle arme, nouvelle salle ---------- */
+#callouts {
+  position: absolute; left: 50%; top: 36%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none;
+}
+.call {
+  font-weight: 900; letter-spacing: .12em; white-space: nowrap; text-shadow: 0 0 14px currentColor, 0 2px 3px #000;
+  animation: callIn 1.4s ease-out forwards;
+}
+.call.room { font-size: 18px; color: var(--cyan); }
+.call.weapon { font-size: 22px; color: var(--gold); }
+.call.streak { color: var(--pink); }
+.call.s2 { font-size: 24px; } .call.s3 { font-size: 30px; } .call.s4 { font-size: 36px; }
+.call.s5 { font-size: 40px; } .call.s6, .call.s7 { font-size: 44px; } .call.s8 { font-size: 50px; color: var(--gold); }
+@keyframes callIn {
+  0% { transform: scale(1.8); opacity: 0; }
+  12% { transform: scale(1); opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-14px); opacity: 0; }
+}
+/* « HEADSHOT » au-dessus de l'ennemi abattu */
+.headTag {
+  position: absolute; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap;
+  font-size: 18px; font-weight: 900; letter-spacing: .1em; color: var(--gold);
+  text-shadow: 0 0 10px rgba(255, 204, 51, .8), 0 2px 3px #000;
+}
+
+/* ---------- Annonce d'un boss, consigne du tutoriel ---------- */
 #banner {
   position: fixed; left: 50%; top: 26%; transform: translateX(-50%); z-index: 12; pointer-events: none;
   width: min(620px, 86vw); text-align: center; display: flex; flex-direction: column; gap: 6px;
   padding: 10px 16px; border-radius: 8px; background: rgba(5, 3, 10, .6);
-  border-top: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan);
+  border-top: 2px solid var(--pink); border-bottom: 2px solid var(--pink);
 }
-#banner.boss { border-color: var(--pink); }
 #banner b { font-size: clamp(18px, 3.4vw, 30px); letter-spacing: .16em; text-transform: uppercase; }
 #banner span { font-size: 13px; opacity: .85; line-height: 1.35; }
 #hint {

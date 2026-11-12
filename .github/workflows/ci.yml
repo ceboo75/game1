@@ -21,12 +21,16 @@ jobs:
       - name: Tests de logique
         run: node tests/run.mjs
 
-      - name: Bibliothèque 3D (Three.js 0.170.0)
+      - name: Bibliothèque 3D (Three.js 0.170.0 et son chargeur de modèles)
         run: |
-          mkdir -p vendor
-          curl -fsSL https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js -o vendor/three.module.js
+          mkdir -p vendor/addons/loaders vendor/addons/utils
+          base=https://cdn.jsdelivr.net/npm/three@0.170.0
+          curl -fsSL $base/build/three.module.js -o vendor/three.module.js
+          for f in loaders/GLTFLoader.js utils/BufferGeometryUtils.js utils/SkeletonUtils.js; do
+            curl -fsSL $base/examples/jsm/$f -o vendor/addons/$f
+          done
 
-      - name: Test de fumée (tous les étages dans un navigateur sans écran)
+      - name: Test de fumée (robot qui traverse 200 salles dans un navigateur sans écran)
         run: |
           npm install --no-save playwright@1
           npx playwright install --with-deps chromium
@@ -48,15 +52,19 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Bibliothèque 3D (Three.js 0.170.0)
+      - name: Bibliothèque 3D (Three.js 0.170.0 et son chargeur de modèles)
         run: |
-          mkdir -p vendor
-          curl -fsSL https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js -o vendor/three.module.js
+          mkdir -p vendor/addons/loaders vendor/addons/utils
+          base=https://cdn.jsdelivr.net/npm/three@0.170.0
+          curl -fsSL $base/build/three.module.js -o vendor/three.module.js
+          for f in loaders/GLTFLoader.js utils/BufferGeometryUtils.js utils/SkeletonUtils.js; do
+            curl -fsSL $base/examples/jsm/$f -o vendor/addons/$f
+          done
 
-      - name: Copie du jeu dans l'appli
+      - name: Copie du jeu dans l'appli (avec les modèles 3D du dossier assets)
         run: |
           mkdir -p android/app/src/main/assets/www
-          cp -r index.html style.css ui.css src vendor android/app/src/main/assets/www/
+          cp -r index.html style.css ui.css src vendor assets android/app/src/main/assets/www/
 
       - name: Fabrication de l'APK
         run: gradle -p android assembleRelease -PversionCode=${{ github.run_number }} --no-daemon --stacktrace

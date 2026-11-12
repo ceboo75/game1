@@ -1,5 +1,4 @@
-// Ennemis spécialisés ajoutés aux trois types de base, et règle qui les place dans les étages.
-// Ils remplacent des hommes de main : le nombre d'ennemis par étage ne change pas.
+// Ennemis spécialisés, ajoutés aux trois types de base. Leur arrivée dans la fuite est réglée dans content/endless.js.
 
 export const EXTRA_TYPES = {
   // Avance derrière un bouclier qui arrête les balles : viser la tête, les pieds, ou le contourner.
@@ -13,13 +12,3 @@ export const EXTRA_TYPES = {
     suit: 0x3a3340, shirt: 0xd8d8e0, tie: 0x202028, visor: 0xff1030, scale: 0.98,
   },
 };
-
-/**
- * Spécialistes présents sur un étage. La Villa sert d'apprentissage : aucun au premier étage, un bouclier ensuite.
- * @returns liste d'identifiants de EXTRA_TYPES
- */
-export function specialists(levelIdx, floorIdx) {
-  if (levelIdx === 0) return floorIdx === 0 ? [] : ['shield'];
-  if (levelIdx === 1) return floorIdx % 2 ? ['shield', 'sniper'] : ['shield'];
-  return floorIdx >= 4 ? ['shield', 'shield', 'sniper'] : ['shield', 'sniper'];
-}
