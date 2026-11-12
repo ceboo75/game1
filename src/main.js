@@ -1,18 +1,19 @@
 // Point d'entrée : assemble les modules, branche les événements du navigateur et lance la boucle d'affichage.
 import * as THREE from 'three';
-import { LEVELS, DIFFICULTIES } from './levels.js';
-import { weaponById } from './weapons.js';
-import { $, game, hooks, sfx } from './game/state.js';
+import { DIFFICULTIES } from './levels.js';
+import { CELL } from './world.js';
+import { $, params, game, hooks, sfx } from './game/state.js';
+import { loadAssets } from './game/assets.js';
+import { t } from './core/i18n.js';
 import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
-import { update, updateCamera, idleCamera, zoomNow, hurtPlayer, alertNear } from './game/combat.js';
+import { update, idleCamera, zoomNow, hurtPlayer, alertNear, hitEnemy } from './game/combat.js';
 import { updateViewmodel } from './game/viewmodel.js';
 import { updateAmbience } from './game/ambience.js';
-import { updateDoors, doorState } from './game/doors.js';
-import { updatePerks } from './game/perkflow.js';
+import { newRun, startRun, updateRun } from './game/run.js';
 import { applyQuality, frameGate, perfFrame, perfState } from './game/perf.js';
-import { newRun, startLevel } from './game/floor.js';
-import { pause, menuBackdrop, initScreens } from './ui/screens.js';
+import { pause, initScreens } from './ui/screens.js';
 import { initSettings } from './ui/settings.js';
+import { initRunHud } from './ui/runhud.js';
 
 const H_FOV = 100; // champ de vision horizontal (degrés)
 
@@ -22,54 +23,61 @@ game.alertNear = alertNear;
 hooks.pause = pause;
 window.game = game; // accès console pour le débogage
 
-// Ce qui tourne à chaque image de jeu, dans l'ordre : les portes, la simulation, puis ce qui en découle.
-// Un module chargé plus tard peut s'ajouter à cette liste (game.systems.push).
-game.systems = [updateDoors, update, updateViewmodel, updateAmbience, updatePerks];
+// Ce qui tourne à chaque image de jeu, dans l'ordre : le combat, la fuite (salles, portes, compte à rebours),
+// puis ce qui en découle. Un module chargé plus tard peut s'ajouter à la liste (game.systems.push).
+game.systems = [update, updateRun, updateViewmodel, updateAmbience];
 function tick(dt) {
   for (const system of game.systems) system(dt);
 }
 
 // ---------------------------------------------------------------- crochets de test
 game.debug = {
-  instant: false, // transitions immédiates et aucun écran intermédiaire (tests automatisés)
-  start: (weaponId = 'm4', diffId = 'normal', levelIdx = 0, floorIdx = 0, seed = 1) => {
-    game.weapon = weaponById(weaponId);
+  start: (diffId = 'normal', seed = 1) => {
     game.diff = DIFFICULTIES[diffId];
     newRun(seed);
-    game.run.levelIdx = levelIdx;
-    startLevel(floorIdx);
+    startRun();
   },
   step: (frames = 1, dt = 1 / 60) => { for (let i = 0; i < frames && game.state === 'play'; i++) tick(dt); },
   render: () => render(),
   perf: () => perfState(),
-  doors: () => doorState(),
-  /** Charge chaque étage, le fait tourner quelques secondes et signale tout problème. */
-  selfTest: (frames = 120) => {
-    const report = { floors: 0, enemies: 0, bosses: 0, maxCalls: 0, maxTriangles: 0, problems: [] };
-    const was = game.debug.instant;
-    game.debug.instant = true;
-    LEVELS.forEach((lv, li) => lv.floors.forEach((fl, fi) => {
-      const where = `${lv.name}, étage ${fi + 1}`;
-      try {
-        game.debug.start('m4', 'normal', li, fi);
-        const bosses = game.enemies.filter(e => e.boss).length;
-        const normals = game.enemies.length - bosses;
-        if (bosses !== (fl.bosses?.length || 0)) report.problems.push(`${where} : ${bosses} boss au lieu de ${fl.bosses?.length || 0}`);
-        if (normals !== fl.count) report.problems.push(`${where} : ${normals} ennemis au lieu de ${fl.count}`);
-        report.enemies += normals;
-        report.bosses += bosses;
-        for (let i = 0; i < frames; i++) { game.player.health = 100; game.debug.step(1); }
-        render();
-        const cost = perfState();
-        report.maxCalls = Math.max(report.maxCalls, cost.calls);
-        report.maxTriangles = Math.max(report.maxTriangles, cost.triangles);
-        if (game.state !== 'play') report.problems.push(`${where} : état « ${game.state} » après ${frames} images`);
-        report.floors++;
-      } catch (e) {
-        report.problems.push(`${where} : ${e.message}`);
-      }
-    }));
-    game.debug.instant = was;
+  /**
+   * Robot de test : traverse des salles en abattant les ennemis et en passant chaque porte.
+   * Mesure le temps de chaque image et vérifie que le monde ne grossit pas avec la distance.
+   */
+  selfTest: (rooms = 200) => {
+    const report = { rooms: 0, kills: 0, maxFrameMs: 0, slowFrames: [], problems: [], memory: {} };
+    game.debug.start('normal', 1);
+    const W = game.world, p = game.player;
+    const snapshot = () => ({
+      geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures,
+      objects: W.group.children.length, rooms: W.rooms.length, calls: perfState().calls,
+    });
+    const frame = () => {
+      const t0 = performance.now();
+      p.health = 100;
+      tick(1 / 60);
+      render();
+      const ms = performance.now() - t0;
+      report.maxFrameMs = Math.max(report.maxFrameMs, ms);
+      if (ms > 50) report.slowFrames.push(`salle ${game.run.room} : ${Math.round(ms)} ms`);
+    };
+    for (let i = 0; i < rooms && game.state === 'play'; i++) {
+      const run = game.run, here = W.room(run.room), next = W.room(run.room + 1);
+      if (!next) { report.problems.push(`salle ${run.room + 1} non construite d'avance`); break; }
+      for (const e of here.enemies) if (e.alive && hitEnemy(e, 1e6)) report.kills++;
+      frame();
+      if (!run.unlocked) report.problems.push(`salle ${run.room} : porte restée verrouillée`);
+      p.pos.set(next.door.x - 1.2, 0, next.door.z);          // devant la porte : elle s'enfonce
+      frame();
+      p.pos.set((next.x0 + 1) * CELL + 1, 0, next.door.z);  // dans la salle suivante
+      for (let f = 0; f < 30; f++) frame();
+      if (game.run.room !== i + 1) { report.problems.push(`salle ${i + 1} : pas entré (salle ${game.run.room})`); break; }
+      report.rooms++;
+      if (i === 10) report.memory.room10 = snapshot();
+    }
+    report.memory.end = snapshot();
+    report.distance = Math.floor(game.run.distance);
+    report.weapon = game.weapon.id;
     return report;
   },
 };
@@ -102,12 +110,16 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // ---------------------------------------------------------------- démarrage
+initRunHud();
 initScreens();
 initSettings();
 applyQuality();
 resize();
-menuBackdrop(0);
 game.state = 'menu';
+// modèles 3D fournis (assets/manifest.json) ; « ?manifest=... » en charge un autre pour les essais
+const tap = document.querySelector('.tapHint');
+loadAssets(params.get('manifest') || undefined, k => { tap.textContent = t('menu.loading', { n: Math.round(k * 100) }); })
+  .finally(() => { game.assetsReady = true; tap.textContent = t('menu.tap'); });
 
 let last = performance.now();
 function frame(now) {
@@ -117,8 +129,7 @@ function frame(now) {
   last = now;
   const playing = game.state === 'play';
   if (playing) tick(dt);
-  else if (game.state === 'menu' || game.state === 'select') idleCamera(dt);
-  else if (game.state === 'transition' && game.ws) updateCamera(0);
+  else if (game.state === 'menu') idleCamera(dt);
   render();
   perfFrame(dt, playing);
 }

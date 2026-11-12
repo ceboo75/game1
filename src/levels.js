@@ -1,12 +1,5 @@
-// Contenu du jeu : difficultés, types d'ennemis, boss, thèmes visuels et cartes des 3 bâtiments.
-//
-// Légende des cartes (1 caractère = une case de 2 m) :
-//   #  mur              W  mur vitré (fenêtre)        .  sol
-//   c  meuble / caisse (couverture, bloque le passage)
-//   S  arrivée du joueur sur l'étage
-//   e  emplacement possible d'ennemi (le type est tiré au sort, toujours le même pour un étage donné)
-//   B  emplacement du boss (sinon emplacement d'ennemi normal)
-//   D  escalier vers l'étage inférieur        X  sortie du bâtiment (extraction)
+// Contenu du jeu : difficultés, armes des ennemis, types d'ennemis, boss, thèmes visuels des décors.
+// Les salles sont dans content/rooms.js, les réglages de la fuite dans content/endless.js.
 
 // ------------------------------------------------------------------ difficultés
 export const DIFFICULTIES = {
@@ -19,7 +12,7 @@ export const DIFFICULTIES = {
     enemyAcc: 0.36, enemyDmg: 10, enemyHp: 1.3, reaction: 0.8, regenDelay: 6, regenRate: 10, floorHeal: false, scoreMul: 1.5,
   },
   suicide: {
-    id: 'suicide', name: 'Suicide', desc: "Deux balles et c'est fini. Pas de régénération : la vie revient seulement à chaque nouvel étage. Points x2.",
+    id: 'suicide', name: 'Suicide', desc: "Deux balles et c'est fini. Pas de régénération : la vie revient seulement à chaque nouvelle salle. Points x2.",
     enemyAcc: 0.4, enemyDmg: 50, enemyHp: 1.5, reaction: 0.65, regenDelay: Infinity, regenRate: 0, floorHeal: true, scoreMul: 2,
   },
 };
@@ -103,196 +96,8 @@ export const THEMES = {
   },
 };
 
-// ------------------------------------------------------------------ cartes
-const mirror = rows => {
-  const w = Math.max(...rows.map(r => r.length));
-  return rows.map(r => r.padEnd(w, '#').split('').reverse().join(''));
-};
-
-const VILLA_UP = [
-  '##WWWW######WWWW######WWWW####',
-  '#........#..........#........#',
-  'W...S....#....e.....#...e....W',
-  'W........#..........#........W',
-  '#..cc....#...cc..e..#...cc.e.#',
-  '#........#..........#........#',
-  '####..########..#######..#####',
-  '#............................#',
-  'W.....e........e.........e...W',
-  '#............................#',
-  '#####..########..#######..####',
-  '#.........#..........#.......#',
-  'W...e.....#...c..e...#.....D.W',
-  'W..c......#.....c....#..e....W',
-  '#.........#..........#.......#',
-  '##WWWW######WWWW#######WWWW###',
-];
-
-const VILLA_GROUND = [
-  '###WWWW####WWWWWW####WWWW#####',
-  '#......e......#..............#',
-  'W...c.....e...#....e.....S...W',
-  'W.............#..............W',
-  '#...cc....c...#...cc....cc...#',
-  '#.............##..####..######',
-  '#..e..........#...........e..#',
-  '#.............#..............#',
-  '######..#######...cc.....e...#',
-  '#............#...............W',
-  'W...c...e....#...e.....c.....W',
-  '#............................#',
-  'X......B.....#.....e.........#',
-  'X............#.......e.......#',
-  '#..cc....e...#....c.....c....#',
-  '##WWWW#####WWWW#####WWWW######',
-];
-
-const HOTEL_ROOMS = [
-  '#WWW###WWW###WWW###WWW###WWW####',
-  '#.....#.....#.....#.....#.....##',
-  '#..e..#..c..#..e..#.....#..e..##',
-  '#.....#..e..#.....#..c..#.....##',
-  '###.#####.#####.#####.#####.####',
-  '#.....c....e.....c.......c.....#',
-  '#S.......e..........e.........D#',
-  '#...........c......c...........#',
-  '####.#####.#####.#####.#####.###',
-  '##.....#.....#.....#.....#.....#',
-  '##..e..#..c..#..e..#..c..#..e..#',
-  '##.....#.....#..c..#..e..#.....#',
-  '#WWW###WWW###WWW###WWW###WWW####',
-];
-
-const HOTEL_BALLROOM = [
-  '##WWWW####WWWWWWWWWWWW####WWWW##',
-  '#.......#..................#...#',
-  '#.......#..c....c....c..e..#...#',
-  '#S......#..................#.e.#',
-  '#...e...#....e.....c.......#...#',
-  '#..c..........B.....c..........#',
-  '#.......#..................#...#',
-  '#.......#..c..e.c....c.....#.e.#',
-  '#.......#..................#...#',
-  '#..e....#.....e........c...#...#',
-  '#.......#..................#.D.#',
-  '##WWWW####WWWWWWWWWWWW####WWWW##',
-];
-
-const HOTEL_LOBBY = [
-  '##########WWWWWWWWWWWW##########',
-  '#..S....#..............#.......#',
-  '#.......#...c......c...#...e...#',
-  '#...e.......................c..#',
-  '#.......#..ccccccccc...#.......#',
-  '####.####....e.B..e....#...e...#',
-  '#..............................#',
-  '#..c..c..e..c..........c..e..c.#',
-  '#..............................#',
-  '#...e.....c.........c.....e....#',
-  '#..............................#',
-  '##############XXXX##############',
-];
-
-const TOWER_OPEN = [
-  '#WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW#',
-  'W.....#.............e............W',
-  'W..S..#..cc..cc..e...cc..cc..e...W',
-  'W.....#....................e.....W',
-  'W..e.....cc..cc......cc..cc......W',
-  'W.....#.......e..........e.......W',
-  'W######.............############.W',
-  'W.........c.........#......e.....W',
-  'W...e.....c.....e...#............W',
-  'W.........e.........#....cc...D..W',
-  'W.......e.......c................W',
-  '#WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW#',
-];
-
-const TOWER_CUBES = [
-  '#WWWWWWWWWWWW######WWWWWWWWWWWWWW#',
-  'W..S...#....#.......#.....#......W',
-  'W......#..e.#...c...#..e..#..e...W',
-  'W......#....#.......#.....#...e..W',
-  'W......##.####..e..###.####..c...W',
-  'W................................W',
-  'W..c.c.c.c...e....c.c.c.c...B....W',
-  'W................................W',
-  'W..c.c.c.c....e...c.c.c.c....e...W',
-  'W.......e..................e.....W',
-  'W#####.####..e..#####.####...D...W',
-  '#WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW#',
-];
-
-const TOWER_SERVERS = [
-  '#WWWWWWW##########WWWWWWWWWWWWWWW#',
-  'W..S....#..c.c.c.c.c..#....e.....W',
-  'W.......#.............#....e.....W',
-  'W...e...#..c.c.c.c.c..#..........W',
-  'W.......#......e......#...cc.....W',
-  'W.......#..c.c.c.c.c..#.......e..W',
-  'W.....................#....e.....W',
-  'W.......#..c.c.c.c.c........B....W',
-  'W..e....#.............#..........W',
-  'W.......#..e..........#....cc....W',
-  'W.......#.....e.......#.....D....W',
-  '#WWWWWWW##########WWWWWWWWWWWWWWW#',
-];
-
-const TOWER_LOBBY = [
-  '##########WWWWWWWWWWWWWW##########',
-  '#..........#..........#.......S..#',
-  '#..e..c....#....e.....#..........#',
-  '#..........#..........#....c.....#',
-  '#....c.........c..........e......#',
-  '#....e.....#..........#..........#',
-  '######.#########..#######.########',
-  '#................................#',
-  '#..c...e....cc....B...cc....e..c.#',
-  '#................................#',
-  '#...e....c....c......c....c...e..#',
-  '#.........e..........e...........#',
-  '##############XXXXXX##############',
-];
-
-// ------------------------------------------------------------------ les 3 niveaux
-// mix : proportion de chaque type d'ennemi dans le bâtiment
-export const LEVELS = [
-  {
-    id: 'villa', name: 'Villa Kessler', theme: 'villa', mix: { grunt: 0.8, rusher: 0.2 },
-    brief: "Kessler, le bras droit de Varga, t'a trahi. Tu es à l'étage de sa villa, il t'attend en bas. Élimine-le et sors.",
-    floors: [
-      { name: 'Étage', rows: VILLA_UP, count: 10 },
-      { name: 'Rez-de-chaussée', rows: VILLA_GROUND, count: 11, bosses: ['kessler'], extraHeavy: 1 },
-    ],
-  },
-  {
-    id: 'hotel', name: 'Hôtel Aurora', theme: 'hotel', mix: { grunt: 0.6, rusher: 0.25, heavy: 0.15 },
-    brief: "Les frères Lenz tiennent l'Aurora pour Varga. L'alerte est donnée : cinq étages à descendre, deux frères à abattre.",
-    floors: [
-      { name: '5e étage', rows: HOTEL_ROOMS, count: 10 },
-      { name: '4e étage', rows: mirror(HOTEL_ROOMS), count: 10 },
-      { name: '3e étage · salle de bal', rows: HOTEL_BALLROOM, count: 8, bosses: ['lenzA'] },
-      { name: '2e étage · salle de bal', rows: mirror(HOTEL_BALLROOM), count: 9 },
-      { name: 'Hall', rows: HOTEL_LOBBY, count: 9, bosses: ['lenzB'] },
-    ],
-  },
-  {
-    id: 'tower', name: 'Tour Varga', theme: 'tower', mix: { grunt: 0.5, rusher: 0.25, heavy: 0.25 },
-    brief: 'Varga se terre dans le hall de sa tour. Huit étages, son garde du corps et La Veuve entre vous. Finis-en.',
-    floors: [
-      { name: '8e étage', rows: TOWER_OPEN, count: 11 },
-      { name: '7e étage', rows: mirror(TOWER_OPEN), count: 11 },
-      { name: '6e étage', rows: TOWER_CUBES, count: 10, bosses: ['kask'] },
-      { name: '5e étage', rows: mirror(TOWER_CUBES), count: 11 },
-      { name: '4e étage · serveurs', rows: TOWER_SERVERS, count: 10 },
-      { name: '3e étage · serveurs', rows: mirror(TOWER_SERVERS), count: 9, bosses: ['veuve'] },
-      { name: '2e étage', rows: TOWER_OPEN, count: 12 },
-      { name: 'Hall', rows: TOWER_LOBBY, count: 9, bosses: ['varga'] },
-    ],
-  },
-];
-
-/** Générateur pseudo-aléatoire déterministe (mêmes ennemis à chaque partie pour un étage donné). */
+// ------------------------------------------------------------------ hasard reproductible
+/** Générateur pseudo-aléatoire déterministe : la même graine redonne toujours la même suite (parcours, ennemis). */
 export function rng(seed) {
   let a = seed >>> 0;
   return () => {

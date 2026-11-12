@@ -1,4 +1,4 @@
-// Caractéristiques des 9 armes et construction de leur modèle 3D (vue à la 1re personne).
+// Caractéristiques des 9 armes. Leur modèle 3D est construit par game/gunmodel.js.
 // Valeurs de départ, à équilibrer en jouant.
 //  damage      dégâts par balle (par plomb pour le fusil à pompe) ; la tête prend x3
 //  rpm         cadence en coups par minute
@@ -7,8 +7,6 @@
 //  reload      temps de rechargement (s) ; shellReload : cartouche par cartouche
 //  speed       multiplicateur de vitesse de déplacement (poids de l'arme)
 //  range       portée efficace (m) ; au-delà les dégâts baissent jusqu'à minFalloff
-import * as THREE from 'three';
-
 export const WEAPONS = [
   {
     id: 'fn57', name: 'FN-57', type: 'Pistolet', desc: 'Très maniable, rechargement rapide. La plus mobile de toutes.',
@@ -75,97 +73,4 @@ for (const w of WEAPONS) {
   w.adsSpread = w.id === 'benelli' ? 0.75 : 0.35;
 }
 
-export const weaponById =id => WEAPONS.find(w => w.id === id) || WEAPONS[4];
-
-/** Barres affichées sur l'écran de choix (0..1) + valeur lisible. */
-export function weaponBars(w) {
-  const clamp = v => Math.max(0.05, Math.min(1, v));
-  const burst = w.damage * w.pellets;
-  return [
-    ['Dégâts', clamp(burst / 60), w.pellets > 1 ? `${w.pellets}×${w.damage}` : String(w.damage)],
-    ['Cadence', clamp(w.rpm / 1000), String(w.rpm)],
-    ['Chargeur', clamp(w.mag / 32), String(w.mag)],
-    ['Contrôle', clamp(1 - w.recoil / 3.3), ''],
-    ['Portée', clamp(w.range / 60), w.range + ' m'],
-    ['Mobilité', clamp((w.speed - 0.82) / 0.35), ''],
-  ];
-}
-
-function flashTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grd.addColorStop(0, 'rgba(255,255,230,1)');
-  grd.addColorStop(0.25, 'rgba(255,200,90,0.9)');
-  grd.addColorStop(1, 'rgba(255,120,20,0)');
-  g.fillStyle = grd;
-  g.beginPath();
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2, r = i % 2 ? 12 : 32;
-    g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r);
-  }
-  g.fill();
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-let FLASH_TEX = null;
-
-/** Modèle d'arme en blocs low-poly. Le canon pointe vers -z. */
-export function buildGunModel(w) {
-  const m = w.model;
-  const g = new THREE.Group();
-  // métal peu réfléchissant : sans carte d'environnement, un métal fort paraîtrait noir
-  const body = new THREE.MeshStandardMaterial({ color: m.color, roughness: 0.5, metalness: 0.15 });
-  const black = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.6, metalness: 0.1 });
-  const wood = new THREE.MeshStandardMaterial({ color: 0x5b2f18, roughness: 0.7 });
-  const neon = new THREE.MeshBasicMaterial({ color: 0xff2d78 });
-  const add = (sx, sy, sz, x, y, z, mat, rx = 0) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
-    b.position.set(x, y, z); b.rotation.x = rx; g.add(b); return b;
-  };
-
-  let muzzleZ;
-  if (m.kind === 'pistol') {
-    add(0.05, 0.05, 0.22, 0, 0, -0.11, body);            // culasse
-    add(0.045, 0.04, 0.19, 0, -0.043, -0.1, black);      // carcasse
-    add(0.044, 0.13, 0.06, 0, -0.11, -0.02, black, 0.25); // poignée
-    add(0.006, 0.006, 0.18, 0.026, 0.006, -0.11, neon);
-    muzzleZ = -0.23;
-  } else {
-    const L = m.len, B = m.barrel || 0;
-    add(0.065, 0.085, L, 0, 0, -L / 2, body);                  // boîtier
-    add(0.04, 0.025, L * 0.85, 0, 0.055, -L / 2, black);       // rail
-    if (B > 0) add(0.03, 0.03, B, 0, 0.012, -L - B / 2, black); // canon
-    let end = L + B;
-    if (m.suppressor) { add(0.056, 0.056, m.suppressor, 0, 0.012, -L - m.suppressor / 2, black); end = L + m.suppressor; }
-    if (m.kind === 'shotgun') {
-      add(0.034, 0.034, B * 0.92, 0, -0.03, -L - B * 0.46, black);  // tube magasin
-      add(0.06, 0.06, 0.17, 0, -0.035, -L + 0.02, black);           // pompe
-    }
-    if (m.wood) add(0.072, 0.07, L * 0.42, 0, -0.005, -L * 0.8, wood); // garde-main
-    add(0.045, 0.12, 0.055, 0, -0.1, -0.06, black, 0.3);             // poignée
-    if (m.mag === 'straight') add(0.05, 0.17, 0.07, 0, -0.13, -0.19, black);
-    if (m.mag === 'curved') add(0.05, 0.18, 0.07, 0, -0.13, -0.21, black, -0.38);
-    if (m.mag === 'grip') add(0.04, 0.08, 0.045, 0, -0.19, -0.07, black, 0.3);
-    if (m.stock) add(0.05, 0.09, 0.22, 0, -0.02, 0.1, m.wood ? wood : black);
-    add(0.006, 0.006, L * 0.7, 0.034, 0.01, -L / 2, neon);
-    muzzleZ = -end;
-  }
-
-  // Flamme de bouche (deux plans croisés, invisibles hors tir).
-  FLASH_TEX ??= flashTexture();
-  const fm = new THREE.MeshBasicMaterial({ map: FLASH_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const flash = new THREE.Group();
-  const s = w.silenced ? 0.5 : 1;
-  const a = new THREE.Mesh(new THREE.PlaneGeometry(0.22 * s, 0.22 * s), fm);
-  const b = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * s, 0.14 * s), fm);
-  b.rotation.y = Math.PI / 2; b.position.z = -0.08 * s;
-  flash.add(a, b);
-  flash.position.set(0, 0.012, muzzleZ - 0.06);
-  flash.visible = false;
-  g.add(flash);
-  g.userData.flash = flash;
-  return g;
-}
+export const weaponById = id => WEAPONS.find(w => w.id === id) || WEAPONS[4];
