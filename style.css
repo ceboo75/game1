@@ -184,7 +184,6 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .title.small { font-size: clamp(26px, 6vw, 46px); }
 .subtitle { letter-spacing: .3em; text-transform: uppercase; color: var(--cyan); font-size: 13px; }
 .tapHint { margin-top: 26px; font-size: 15px; opacity: .85; animation: blink 1s infinite alternate; }
-.best { font-size: 13px; opacity: .7; }
 .btn {
   min-width: 200px; padding: 12px 26px; font-weight: 800; letter-spacing: .2em; font-size: 16px;
   border: 2px solid var(--pink); background: rgba(255, 45, 120, .18); border-radius: 6px;
@@ -193,11 +192,6 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .btn:active { background: rgba(255, 45, 120, .45); }
 .btn.ghost { border-color: rgba(255, 255, 255, .4); background: transparent; box-shadow: none; }
 
-#screenSelect { gap: 8px; }
-.selectTop { display: flex; gap: 18px; width: min(920px, 100%); align-items: center; }
-.lvlInfo { flex: 1; min-width: 0; }
-#lvlName { font-size: 18px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 45, 120, .6); }
-#lvlBrief { font-size: 12px; opacity: .8; line-height: 1.3; }
 #diffChips { display: flex; gap: 6px; flex-shrink: 0; }
 .chip {
   padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 800; letter-spacing: .1em;
@@ -205,29 +199,6 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 .chip.sel { border-color: var(--cyan); background: rgba(34, 228, 255, .2); box-shadow: 0 0 8px rgba(34, 228, 255, .35); }
 .chip.sel.suicide { border-color: var(--pink); background: rgba(255, 45, 120, .25); box-shadow: 0 0 8px rgba(255, 45, 120, .45); }
-.chip.locked { opacity: .9; pointer-events: none; }
-.selectWrap { display: flex; gap: 22px; width: min(920px, 100%); height: min(310px, calc(100% - 70px)); align-items: stretch; }
-.selectLeft { flex: 1.2; display: flex; flex-direction: column; min-width: 0; }
-.selectHead { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: var(--cyan); margin-bottom: 6px; }
-#weaponGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1; }
-.wcard {
-  border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .04); border-radius: 6px;
-  padding: 6px 10px; text-align: left; display: flex; flex-direction: column; justify-content: center;
-}
-.wcard b { font-size: 16px; letter-spacing: .05em; }
-.wcard small { font-size: 11px; opacity: .6; }
-.wcard.sel { border-color: var(--pink); background: rgba(255, 45, 120, .18); box-shadow: 0 0 10px rgba(255, 45, 120, .35); }
-.selectRight { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-#wName { font-size: 30px; font-weight: 900; letter-spacing: .08em; text-shadow: 0 0 12px rgba(255, 45, 120, .6); }
-#wType { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--cyan); margin-top: -4px; }
-#wBars { display: flex; flex-direction: column; gap: 5px; margin: 6px 0; }
-.bar { display: grid; grid-template-columns: 80px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; }
-.bar .track { height: 6px; background: rgba(255, 255, 255, .12); border-radius: 3px; overflow: hidden; }
-.bar .fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); }
-.bar .val { text-align: right; opacity: .75; font-variant-numeric: tabular-nums; }
-#wDesc { font-size: 12px; opacity: .8; min-height: 30px; }
-#wBars { gap: 4px; margin: 4px 0; }
-#btnGo { margin-top: auto; align-self: stretch; }
 
 /* Tableau des scores sur deux colonnes : tient même sans plein écran (barre d'adresse visible) */
 .endWrap { display: flex; gap: 32px; align-items: center; max-width: 100%; }
