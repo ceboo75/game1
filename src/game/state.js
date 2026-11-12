@@ -47,10 +47,6 @@ class LocalHud extends Hud {
     this._set('comboMul', mult, x => { this.comboTxt.textContent = t('hud.combo', { x: String(x).replace('.', ',') }); });
     this.comboFill.style.width = (frac * 100).toFixed(1) + '%';
   }
-
-  enemies(left, total) {
-    this._set('enemies', left, x => { this.enemyCount.textContent = t('hud.enemies', { left: x, total }); });
-  }
 }
 
 export const hud = new LocalHud();
@@ -82,17 +78,16 @@ export function audioOn() {
 }
 
 export const game = {
-  state: 'menu',          // menu | select | play | perk | transition | paused | end
-  run: null,              // partie en cours (voir newRun dans floor.js)
-  level: null,
-  layout: null,           // salles et portes de l'étage en cours
-  enemies: [],
+  state: 'menu',          // menu | play | paused | end
+  run: null,              // partie en cours (voir newRun dans run.js)
+  world: null,            // salles chargées (world.js)
+  level: null,            // le même monde, sous le nom qu'utilisent les ennemis
+  enemies: [],            // ennemis actifs : ceux des salles accessibles
   flow: null,
   flowTimer: 0,
   time: 0,
   diff: DIFFICULTIES[save.data.lastDiff] || DIFFICULTIES.normal,
-  weapon: weaponById(save.data.lastWeapon || 'm4'),
-  mods: null,             // effet cumulé des atouts de la partie
+  weapon: weaponById('fn57'), // l'arme change toute seule pendant la partie (voir run.js)
   gun: null,
   ws: null,
   stats: null,
@@ -108,5 +103,6 @@ export const game = {
   hurtPlayer: null,
   alertNear: null,
   systems: [],            // ce qui tourne à chaque image de jeu (rempli par main.js)
+  assetsReady: false,     // modèles 3D fournis chargés (ou absents) : la partie peut commencer
   debug: null,
 };

@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { Fx } from '../fx.js';
 import { $, game, settings } from './state.js';
-import { syncDecor } from './decor.js';
 
 // Le lissage des contours se décide à la création : en qualité basse il est coupé, et un changement de qualité
 // ne le modifie qu'au lancement suivant. La finesse de l'image, elle, est réglée en continu par perf.js.
@@ -55,7 +54,6 @@ export function applyFov(zoom) {
 }
 
 export function render() {
-  syncDecor(); // le mobilier suit l'étage affiché, quel que soit l'écran qui l'a chargé
   renderer.info.reset();
   renderer.clear();
   renderer.render(scene, camera);

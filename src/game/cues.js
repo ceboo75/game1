@@ -71,14 +71,16 @@ export function impact(sfx, dist) {
   sweep(sfx, sfx.world, t, 'bandpass', 2.5, 2100, 1200, 0.16 * (1 - dist / 40), 0.035);
 }
 
-/** Explosion d'une bonbonne : grave qui s'effondre, souffle, résonance de la pièce. */
-export function explosion(sfx) {
+/** Série d'éliminations : arpège qui monte d'un cran à chaque palier. */
+export function streakSound(sfx, combo) {
   if (!sfx.ok) return;
-  const t = sfx.now;
-  const out = sfx.ctx.createGain();
-  out.connect(sfx.world);
-  out.connect(sfx.reverb);
-  blip(sfx, out, t, 'sine', 95, 30, 0.95, 0.5);
-  sweep(sfx, out, t, 'lowpass', 0.7, 1800, 200, 0.9, 0.45);
-  sweep(sfx, out, t, 'highpass', 0.7, 3000, 5000, 0.25, 0.06);
+  const t = sfx.now, base = 440 * Math.pow(2, Math.min(combo - 2, 6) / 6);
+  [1, 1.26, 1.5, 2].forEach((f, i) => blip(sfx, sfx.master, t + i * 0.05, 'triangle', base * f, base * f * 1.01, 0.16, 0.14));
+}
+
+/** Compte à rebours : un bip par seconde sur les cinq dernières, plus grave à zéro. */
+export function tick(sfx, sec) {
+  if (!sfx.ok) return;
+  if (sec === 0) blip(sfx, sfx.master, sfx.now, 'square', 220, 180, 0.16, 0.35);
+  else blip(sfx, sfx.master, sfx.now, 'square', 880, 880, 0.08, 0.05);
 }
