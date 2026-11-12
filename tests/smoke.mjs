@@ -1,5 +1,7 @@
-// Test de fumée : ouvre le jeu dans un navigateur sans écran et fait charger et tourner chaque étage.
-// Demande Playwright et vendor/three.module.js : lancé par GitHub Actions (`node tests/smoke.mjs`).
+// Test de fumée : ouvre le jeu dans un navigateur sans écran ; un robot traverse 200 salles de la fuite,
+// puis le jeu est rouvert avec le modèle 3D de test (tests/fixtures/manifest.json).
+// Demande Playwright et vendor/ : lancé par GitHub Actions (`node tests/smoke.mjs`).
+// Les temps d'image ne sont pas vérifiés ici : le rendu y est logiciel, donc bien plus lent qu'un téléphone.
 import http from 'node:http';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -30,14 +32,29 @@ try {
   const page = await browser.newPage({ viewport: { width: 915, height: 412 } });
   page.on('pageerror', e => errors.push(`erreur de page : ${e.message}`));
   page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(`console : ${m.text()}`); });
+  const ready = () => page.waitForFunction(() => window.game?.assetsReady, null, { timeout: 30000 });
+
   await page.goto(url);
-  await page.waitForFunction(() => window.game?.debug?.selfTest, null, { timeout: 30000 });
-  const report = await page.evaluate(() => window.game.debug.selfTest());
+  await ready();
+  const report = await page.evaluate(() => window.game.debug.selfTest(200));
   errors.push(...report.problems);
-  console.log(`${report.floors} étages chargés et joués, ${report.enemies} ennemis, ${report.bosses} boss, ${report.maxCalls} appels d'affichage au plus`);
-  if (report.floors !== 15) errors.push(`15 étages attendus, ${report.floors} joués`);
-  if (report.enemies !== 150) errors.push(`150 ennemis attendus, ${report.enemies} présents`);
-  if (report.bosses !== 6) errors.push(`6 boss attendus, ${report.bosses} présents`);
+  const m = report.memory;
+  console.log(`${report.rooms} salles traversées, ${report.distance} m, ${report.kills} éliminations, arme finale ${report.weapon}`);
+  console.log(`mémoire : ${m.room10.geometries} géométries en salle 10, ${m.end.geometries} à la fin ; ${m.end.calls} appels d'affichage`);
+  if (report.rooms !== 200) errors.push(`200 salles attendues, ${report.rooms} traversées`);
+  if (m.end.rooms !== m.room10.rooms) errors.push(`le monde grossit : ${m.room10.rooms} puis ${m.end.rooms} salles chargées`);
+  if (m.end.textures !== m.room10.textures) errors.push(`textures : ${m.room10.textures} puis ${m.end.textures}`);
+
+  await page.goto(`${url}?manifest=tests/fixtures/manifest.json`);
+  await ready();
+  const custom = await page.evaluate(() => {
+    window.game.debug.start('normal', 1);
+    const bodies = window.game.world.rooms.flatMap(r => r.enemies).filter(e => e.def.id === 'grunt').map(e => e.body.constructor.name);
+    return { bodies: [...new Set(bodies)], gun: !!window.game.gun.userData.custom };
+  });
+  if (custom.bodies.join() !== 'ModelBody' || !custom.gun) errors.push(`modèle de test non utilisé : ${JSON.stringify(custom)}`);
+  // le fichier volontairement absent du manifeste de test produit une requête en échec, attendue
+  for (let i = errors.length - 1; i >= 0; i--) if (/404|absent\.glb/.test(errors[i])) errors.splice(i, 1);
   code = errors.length ? 1 : 0;
 } catch (e) {
   errors.push(`test interrompu : ${e.message}`);

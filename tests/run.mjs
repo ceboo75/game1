@@ -2,9 +2,8 @@
 import { cases, runAll } from './cases.js';
 import './settings.cases.js';
 import './tactics.cases.js';
-import './floorgen.cases.js';
-import './perks.cases.js';
 import './daily.cases.js';
+import './endless.cases.js';
 import './i18n.cases.js';
 
 const { passed, failed } = runAll();

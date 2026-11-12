@@ -1,24 +1,19 @@
 // Tests de la logique pure. Lancés par Node (tests/run.mjs) et par le navigateur (tests/index.html).
+// Les autres fichiers *.cases.js ajoutent leurs tests à la même liste.
 import { comboMult, nextCombo, killPoints, COMBO_WINDOW } from '../src/core/score.js';
-import { validateMap, parseMap, farSpots } from '../src/core/grid.js';
+import { validateMap } from '../src/core/grid.js';
 import { Save, SAVE_KEY, SAVE_VERSION, memStorage } from '../src/core/save.js';
 import { t, tr } from '../src/core/i18n.js';
-import { LEVELS, DIFFICULTIES, DIFF_ORDER, BOSSES, rng } from '../src/levels.js';
+import { DIFFICULTIES, DIFF_ORDER, rng } from '../src/levels.js';
 
-function eq(actual, expected, what = '') {
+export function eq(actual, expected, what = '') {
   const a = JSON.stringify(actual), e = JSON.stringify(expected);
   if (a !== e) throw new Error(`${what} : attendu ${e}, obtenu ${a}`);
 }
-function ok(cond, what) { if (!cond) throw new Error(what); }
+export function ok(cond, what) { if (!cond) throw new Error(what); }
 
 export const cases = [];
-const test = (name, fn) => cases.push({ name, fn });
-
-/** Nombre d'ennemis normaux qu'un étage peut réellement accueillir (même règle que le chargement d'un étage). */
-function capacity(fl) {
-  const map = parseMap(fl.rows);
-  return farSpots(map, fl.bosses?.length ? map.spawns : [...map.spawns, ...map.bossSpots]).length;
-}
+export const test = (name, fn) => cases.push({ name, fn });
 
 // ---------------------------------------------------------------- score
 test('combo : x1 puis +0,5 par kill, plafonné à x3', () => {
@@ -47,30 +42,32 @@ test('rng : même graine, même suite, valeurs entre 0 et 1', () => {
 });
 
 // ---------------------------------------------------------------- sauvegarde
-test('sauvegarde : reprise des anciennes clés', () => {
-  const s = new Save(memStorage({ best_normal: '1200', best_suicide: '50', lastDiff: 'difficile', lastWeapon: 'ak47' }));
-  eq(s.data.v, SAVE_VERSION, 'version');
-  eq([s.best('normal'), s.best('difficile'), s.best('suicide')], [1200, 0, 50], 'records');
-  eq([s.data.lastDiff, s.data.lastWeapon], ['difficile', 'ak47'], 'derniers choix');
-});
-test('sauvegarde : un record ne peut que monter, et il est relu', () => {
+test('sauvegarde : score et distance, deux records indépendants, relus au lancement', () => {
   const store = memStorage();
   const s = new Save(store);
-  eq(s.submitScore('normal', 500), { prev: 0, isBest: true }, 'premier score');
-  eq(s.submitScore('normal', 300), { prev: 500, isBest: false }, 'score inférieur');
-  s.set('lastWeapon', 'sks');
-  const again = new Save(store);
-  eq([again.best('normal'), again.data.lastWeapon], [500, 'sks'], 'relecture');
+  eq(s.best('normal'), { score: 0, distance: 0 }, 'jamais jouée');
+  eq(s.submitRun('normal', 5000, 300), { prev: { score: 0, distance: 0 }, isBestScore: true, isBestDistance: true }, 'première partie');
+  eq(s.submitRun('normal', 4000, 420), { prev: { score: 5000, distance: 300 }, isBestScore: false, isBestDistance: true }, 'plus loin, moins de points');
+  eq(new Save(store).best('normal'), { score: 5000, distance: 420 }, 'relecture');
+  eq(new Save(store).best('difficile'), { score: 0, distance: 0 }, 'autre difficulté');
 });
-test('sauvegarde : un contenu illisible ne fait pas planter', () => {
-  const s = new Save(memStorage({ [SAVE_KEY]: '{pas du json' }));
-  eq(s.best('normal'), 0, 'record');
-  eq(new Save(memStorage({ [SAVE_KEY]: '{"v":1,"best":null}' })).best('normal'), 0, 'records absents');
+test('sauvegarde : passage de la version 1 à la version 2', () => {
+  const v1 = { v: 1, best: { normal: 9000 }, credits: 300, unlocked: ['m4', 'ak47'], mastery: { m4: 40 }, settings: { sens: 1.5 }, lastDiff: 'difficile', tutorialDone: true };
+  const s = new Save(memStorage({ [SAVE_KEY]: JSON.stringify(v1) }));
+  eq(s.data.v, SAVE_VERSION, 'version');
+  eq([s.data.settings.sens, s.data.lastDiff, s.data.tutorialDone], [1.5, 'difficile', true], 'réglages, difficulté et tutoriel conservés');
+  eq(s.best('normal'), { score: 0, distance: 0 }, 'anciens records non repris');
+  eq(['credits', 'unlocked', 'mastery', 'missions'].filter(k => k in s.data), [], 'progression retirée');
+});
+test('sauvegarde : un contenu illisible ou faux ne fait pas planter', () => {
+  eq(new Save(memStorage({ [SAVE_KEY]: '{pas du json' })).best('normal'), { score: 0, distance: 0 }, 'illisible');
+  const bad = new Save(memStorage({ [SAVE_KEY]: '{"v":2,"best":{"normal":{"score":"abc","distance":-5}},"daily":7}' }));
+  eq([bad.best('normal'), bad.data.daily], [{ score: 0, distance: 0 }, null], 'valeurs absurdes');
 });
 
 // ---------------------------------------------------------------- textes
 test('textes : variables, repli, clé inconnue', () => {
-  eq(t('hud.objective.boss', { name: 'Kessler' }), 'Élimine Kessler', 'variable');
+  eq(t('row.comboKills', { n: 4 }), '4 kills', 'variable');
   eq(t('cle.inconnue'), 'cle.inconnue', 'clé inconnue');
   eq(tr('cle.inconnue', 'repli {n}', { n: 2 }), 'repli 2', 'repli');
   eq(tr('diff.suicide.name', 'Suicide'), 'Cauchemar', 'difficulté renommée');
@@ -80,42 +77,17 @@ test('textes : les 9 armes ont un nom', () => {
     ok(t(`weapon.${id}`) !== `weapon.${id}`, `nom manquant pour ${id}`);
   }
 });
+test('difficultés : trois, dans l\'ordre', () => {
+  eq(DIFF_ORDER, ['normal', 'difficile', 'suicide'], 'ordre');
+  ok(DIFF_ORDER.every(id => DIFFICULTIES[id]?.id === id), 'définitions');
+});
 
-// ---------------------------------------------------------------- contenu
-test('contenu : 3 bâtiments, 15 étages, 143 ennemis en jeu, 6 boss', () => {
-  const floors = LEVELS.flatMap(l => l.floors);
-  eq(LEVELS.map(l => l.floors.length), [2, 5, 8], 'étages par bâtiment');
-  eq(floors.reduce((n, f) => n + Math.min(f.count, capacity(f)), 0), 143, 'ennemis réellement présents');
-  eq(floors.reduce((n, f) => n + (f.bosses?.length || 0), 0), 6, 'boss');
-  for (const f of floors) for (const b of f.bosses || []) ok(BOSSES[b], `boss inconnu : ${b}`);
-  eq(DIFF_ORDER.every(id => DIFFICULTIES[id]?.id === id), true, 'difficultés');
-});
-test('cartes : chaque étage est jouable (sortie, ennemis et boss atteignables)', () => {
-  const problems = [];
-  LEVELS.forEach(lv => lv.floors.forEach((fl, i) => {
-    for (const e of validateMap(fl.rows, { bosses: fl.bosses?.length || 0 })) {
-      problems.push(`${lv.name}, étage ${i + 1} (${fl.name}) : ${e}`);
-    }
-  }));
-  ok(!problems.length, '\n  ' + problems.join('\n  '));
-});
-// Défaut connu du contenu d'origine : 7 étages annoncent un ennemi de plus qu'ils n'ont d'emplacements
-// assez loin du départ (150 annoncés, 143 présents). Les cartes seront reconstruites en phase 3 ; d'ici là
-// ce test empêche l'écart de s'aggraver sans qu'on le voie. Format : « bâtiment/étage », à partir de 1.
-test('cartes : écart connu entre effectifs annoncés et emplacements', () => {
-  const short = [];
-  LEVELS.forEach((lv, li) => lv.floors.forEach((fl, fi) => {
-    const missing = fl.count - capacity(fl);
-    if (missing > 0) short.push(`${li + 1}/${fi + 1}:${missing}`);
-  }));
-  eq(short, ['1/2:1', '2/3:1', '2/4:1', '2/5:1', '3/5:1', '3/6:1', '3/7:1'], 'étages en sous-effectif');
-});
+// ---------------------------------------------------------------- validation d'une carte
 test('cartes : la validation détecte une sortie ou un ennemi muré', () => {
   eq(validateMap(['#####', '#S.e#', '#...#', '#..X#', '#####']), [], 'carte saine');
   eq(validateMap(['#####', '#S#e#', '#.c.#', '#..X#', '#####']), [], 'abri contournable');
   ok(validateMap(['#####', '#S#e#', '#.#.#', '#.#X#', '#####']).length >= 2, 'sortie et ennemi murés non détectés');
   ok(validateMap(['#####', '#S.e#', '#####']).length === 1, 'absence de sortie non détectée');
-  ok(validateMap(['###', '#S#', '#X#', '###'], { count: 1 }).length === 1, "manque d'emplacements non détecté");
 });
 
 /** Lance tous les tests. Renvoie { passed, failed: [{ name, error }] }. */
