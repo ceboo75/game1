@@ -29,13 +29,17 @@ const browser = await chromium.launch({
 const errors = [];
 let code = 1;
 try {
-  const page = await browser.newPage({ viewport: { width: 915, height: 412 } });
-  page.on('pageerror', e => errors.push(`erreur de page : ${e.message}`));
-  page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(`console : ${m.text()}`); });
-  const ready = () => page.waitForFunction(() => window.game?.assetsReady, null, { timeout: 30000 });
+  // délais larges : le rendu logiciel de GitHub Actions est très lent
+  const open = async address => {
+    const p = await browser.newPage({ viewport: { width: 915, height: 412 } });
+    p.on('pageerror', e => errors.push(`erreur de page : ${e.message}`));
+    p.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(`console : ${m.text()}`); });
+    await p.goto(address, { waitUntil: 'domcontentloaded', timeout: 180000 });
+    await p.waitForFunction(() => window.game?.assetsReady, null, { timeout: 180000 });
+    return p;
+  };
 
-  await page.goto(url);
-  await ready();
+  const page = await open(url);
   const report = await page.evaluate(() => window.game.debug.selfTest(200));
   errors.push(...report.problems);
   const m = report.memory;
@@ -45,9 +49,10 @@ try {
   if (m.end.rooms !== m.room10.rooms) errors.push(`le monde grossit : ${m.room10.rooms} puis ${m.end.rooms} salles chargées`);
   if (m.end.textures !== m.room10.textures) errors.push(`textures : ${m.room10.textures} puis ${m.end.textures}`);
 
-  await page.goto(`${url}?manifest=tests/fixtures/manifest.json`);
-  await ready();
-  const custom = await page.evaluate(() => {
+  await page.close(); // la première page tourne encore : on la ferme pour ne pas ralentir la suivante
+
+  const page2 = await open(`${url}?manifest=tests/fixtures/manifest.json`);
+  const custom = await page2.evaluate(() => {
     window.game.debug.start('normal', 1);
     const bodies = window.game.world.rooms.flatMap(r => r.enemies).filter(e => e.def.id === 'grunt').map(e => e.body.constructor.name);
     return { bodies: [...new Set(bodies)], gun: !!window.game.gun.userData.custom };
