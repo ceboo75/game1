@@ -1,4 +1,4 @@
-// Salles de chaque bâtiment, assemblées en enfilade par core/floorgen.js pour former un étage.
+// Gabarits de salles de chaque décor, mis bout à bout par la fuite sans fin (core/endless.js, world.js).
 //
 // Chaque salle est son intérieur seul : 9 lignes de même longueur, sans les murs extérieurs.
 //   .  sol      #  cloison      W  cloison vitrée      c  meuble (abri)      e  emplacement possible d'ennemi
