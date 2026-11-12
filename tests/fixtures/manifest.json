@@ -1,0 +1,4 @@
+{
+  "enemies": { "grunt": "triangle.gltf" },
+  "weapons": { "fn57": "triangle.gltf", "uzi": "absent.glb" }
+}
