@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1366,height:768},locale:'fr-FR'});
+page.on('pageerror',e=>console.error(e));
+await page.goto('http://127.0.0.1:8080');await page.waitForFunction(()=>game?.assetsReady);
+await page.screenshot({path:'artifacts/menu-desktop.png'});
+await page.setViewportSize({width:915,height:412});
+await page.screenshot({path:'artifacts/menu-mobile.png'});
+await page.locator('#btnStart').click();
+await page.waitForFunction(()=>game.state==='play');
+await page.screenshot({path:'artifacts/game-mobile.png'});
+await page.locator('#btnPause').dispatchEvent('pointerdown');
+await page.waitForFunction(()=>game.state==='paused');
+await page.screenshot({path:'artifacts/pause-mobile.png'});
+console.log('Title, start, game and pause verified');
+await browser.close();

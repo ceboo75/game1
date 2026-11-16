@@ -9,3 +9,11 @@ android/app/src/main/assets/www/
 android/local.properties
 
 __pycache__/
+
+node_modules/
+.npm-cache/
+.browsers/
+.toolchain/
+artifacts/
+
+.jtmp/

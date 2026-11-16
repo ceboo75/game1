@@ -1,10 +1,11 @@
 // Corps articulé des ennemis : squelette low-poly construit par le code et animé sans fichier d'animation.
 // Marche, mise en joue, recul du tir, sursaut à l'impact et trois chutes. Les mains suivent l'arme (cinématique inverse).
 import * as THREE from 'three';
+import { skinBody } from './skin.js';
 
 const HIP_Y = 0.94, THIGH = 0.44, SHIN = 0.44, UPPER = 0.29, FORE = 0.27;
 const SHOULDER_X = 0.23, SHOULDER_Y = 0.45;
-const SKIN = 0xb98e6e, HAIR = 0x141012, HELMET = 0x1c1f1a, VEST = 0x2a2e26, SHOES = 0x0c0c10;
+const SKIN = 0xada28d, HAIR = 0x141012, HELMET = 0x1c1f1a, VEST = 0x2a2e26, SHOES = 0x0c0c10;
 const DOWN = new THREE.Vector3(0, -1, 0);
 const HALF_PI = Math.PI / 2;
 
@@ -67,6 +68,10 @@ function bodyGeos(def) {
   const head = [{ geo: new THREE.IcosahedronGeometry(0.125, 1), pos: [0, 0.115, 0], scale: [0.9, 1.1, 0.98], color: SKIN }];
   if (def.helmet) head.push({ geo: new THREE.SphereGeometry(0.152, 8, 3, 0, Math.PI * 2, 0, 1.6), pos: [0, 0.125, -0.005], color: HELMET });
   else head.push({ geo: new THREE.SphereGeometry(0.13, 7, 3, 0, Math.PI * 2, 0, 1.45), pos: [0, 0.13, -0.012], scale: [0.94, 1, 1.02], color: HAIR });
+  // Charred masks and angular horns are merged into the head: no extra draw calls.
+  head.push({ geo: box(.18,.10,.055), pos:[0,.065,.106], color:0x29201c });
+  for (const side of [-1,1]) head.push({ geo:cyl(0,.037,def.helmet ? .13 : .19,4),pos:[side*.105,.28,-.015],rot:[-.2,0,-side*.4],color:0x514135 });
+  spine.push({ geo:box(.06,.08,.025),pos:[0,.43,.14],color:def.visor });
   const geos = {
     hips: merge([{ geo: box(0.34, 0.17, 0.21), pos: [0, 0.01, 0], color: suit }]),
     spine: merge(spine),
@@ -141,8 +146,11 @@ export class Body {
     this.scale = def.scale;
     this.material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75, emissive: 0x0c0c12 });
     const geos = bodyGeos(def);
+    const bones = [];
     const bone = (geo, parent, x = 0, y = 0, z = 0) => {
-      const m = geo ? new THREE.Mesh(geo, this.material) : new THREE.Group();
+      const m = new THREE.Bone();
+      m.userData.geometry = geo;
+      bones.push(m);
       m.position.set(x, y, z);
       parent.add(m);
       return m;
@@ -150,7 +158,7 @@ export class Body {
 
     const r = this.root = new THREE.Group();
     r.rotation.order = 'YXZ';
-    r.scale.setScalar(def.scale);
+    // Bind at unit scale; apply the character scale after skinning.
     this.hips = bone(geos.hips, r, 0, HIP_Y, 0);
     this.spine = bone(geos.spine, this.hips, 0, 0.06, 0);
     this.head = bone(geos.head, this.spine, 0, 0.57, 0);
@@ -176,6 +184,8 @@ export class Body {
     this.gun.add(this.muzzle);
     this.foreGrip = Math.min(0.24, gunLen * 0.45);
 
+    this.skin = skinBody(r, bones, geos, this.material);
+    r.scale.setScalar(def.scale);
     this.seed = Math.random() * 10;
     this.t = 0;
     this.phase = Math.random() * 6;
@@ -330,6 +340,7 @@ export class Body {
 
   dispose() {
     this.root.removeFromParent();
+    this.skin.skeleton.dispose();
     this.material.dispose(); // les géométries sont partagées et conservées
   }
 }

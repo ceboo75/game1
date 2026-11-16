@@ -66,6 +66,13 @@ function wallTexture(c) {
     g.fillStyle = c.plinth; g.fillRect(0, h - 18, w, 18);
     g.fillStyle = c.dado; g.fillRect(0, h * 0.55 - 4, w, 8);
     g.fillStyle = c.seam; g.fillRect(0, 0, 3, h); g.fillRect(w - 3, 0, 3, h);
+    g.strokeStyle = '#00000050'; g.lineWidth = 2;
+    g.strokeRect(9, 12, w - 18, h * 0.48);
+    for (const x of [7, w-8]) for (const y of [7,h-24]) { g.fillStyle='#b8a18c';g.fillRect(x,y,2,2); }
+    g.fillStyle = '#00000040'; for(let y=38;y<87;y+=8) g.fillRect(w-35,y,20,3);
+    g.save();g.beginPath();g.rect(0,h-17,w,9);g.clip();
+    g.strokeStyle=c.dado;g.lineWidth=7;
+    for(let x=-20;x<w;x+=20){g.beginPath();g.moveTo(x,h);g.lineTo(x+20,h-22);g.stroke();}g.restore();
   });
 }
 
@@ -73,14 +80,14 @@ function windowTexture(style) {
   return canvasTexture(128, 256, (g, w, h) => {
     const grd = g.createLinearGradient(0, 0, 0, h);
     if (style === 'garden') {
-      grd.addColorStop(0, '#0b1a3a'); grd.addColorStop(0.7, '#1a2a4a'); grd.addColorStop(1, '#0a140f');
+      grd.addColorStop(0, '#160e13'); grd.addColorStop(0.7, '#732619'); grd.addColorStop(1, '#db5b26');
       g.fillStyle = grd; g.fillRect(0, 0, w, h);
       g.fillStyle = '#f2ecd0'; g.beginPath(); g.arc(90, 60, 12, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#06100a';
       for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(i * 26 + 4, h * 0.82, 26 + (i % 3) * 8, 0, Math.PI * 2); g.fill(); }
       g.fillRect(0, h * 0.85, w, h);
     } else {
-      grd.addColorStop(0, '#0a0c24'); grd.addColorStop(0.6, '#2a1440'); grd.addColorStop(1, '#4a1a40');
+      grd.addColorStop(0, '#100c1b'); grd.addColorStop(0.6, '#632130'); grd.addColorStop(1, '#c94c2b');
       g.fillStyle = grd; g.fillRect(0, 0, w, h);
       for (let b = 0; b < 7; b++) {
         const bx = b * 20 - 6, bw = 16 + (b % 3) * 4, top = 70 + ((b * 53) % 110);
@@ -104,7 +111,7 @@ const FIXTURE_GEO = new THREE.BoxGeometry(0.9, 0.06, 0.25);
 const PANEL_GEO = new THREE.BoxGeometry(0.12, DOOR_H, CELL - 0.1);
 const LINTEL_GEO = new THREE.BoxGeometry(CELL, WALL_H - DOOR_H, CELL);
 const HANDLE_GEO = new THREE.BoxGeometry(0.16, 0.06, 0.3);
-const PANEL_MAT = new THREE.MeshStandardMaterial({ color: 0x2a1d16, roughness: 0.6 });
+const PANEL_MAT = new THREE.MeshStandardMaterial({ color: 0x51423b, roughness: 0.45, metalness: 0.65 });
 const LINTEL_MAT = new THREE.MeshStandardMaterial({ color: 0x1a1518, roughness: 0.9 });
 const HANDLE_LOCKED = new THREE.MeshBasicMaterial({ color: 0xff2a3a });
 const HANDLE_OPEN = new THREE.MeshBasicMaterial({ color: 0x39ff88 });

@@ -1,7 +1,9 @@
 // English texts. Weapon names are proper nouns shared by all languages (see fr.js).
 export default {
-  'menu.subtitle': 'Run. Never stop.',
-  'menu.tap': 'Tap the screen to start',
+  'menu.eyebrow': "ENDLESS ESCAPE / NO SECOND CHANCES",
+  'menu.controls': "PC: WASD · Drag to look · Space: fire · E: aim",
+  'menu.subtitle': "Twenty seconds. One door. No way back.",
+  'menu.tap': "ENTER HELL",
   'menu.loading': 'Loading models… {n}%',
   'menu.best': 'Best {points} pts · {meters} m',
   'menu.noBest': 'No record yet',
@@ -108,7 +110,7 @@ export default {
   'boss.varga.title': 'The boss',
   'boss.phase2': '{name} · second round',
 
-  'share.text': 'Sütçü İmam Escape — {meters} m and {points} points on {diff}, {kills} kills, combo of {combo}',
+  'share.text': 'Escape from hell — {meters} m and {points} points on {diff}, {kills} kills, combo of {combo}',
   'share.button': 'SHARE',
   'share.copied': 'COPIED',
 };

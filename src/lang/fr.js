@@ -2,8 +2,10 @@
 // Les textes du contenu (difficultés, boss) restent écrits en français dans leurs fichiers :
 // ils servent de repli, et seules les autres langues les redéfinissent par identifiant.
 export default {
-  'menu.subtitle': "Fuis. Ne t'arrête jamais.",
-  'menu.tap': "Touche l'écran pour commencer",
+  'menu.eyebrow': "FUITE SANS FIN / AUCUNE SECONDE CHANCE",
+  'menu.controls': "PC : ZQSD / WASD · Glisser pour viser · Espace : tir · E : visée",
+  'menu.subtitle': "Vingt secondes. Une porte. Aucun retour.",
+  'menu.tap': "ENTRER EN ENFER",
   'menu.loading': 'Chargement des modèles… {n} %',
   'menu.best': 'Record {points} pts · {meters} m',
   'menu.noBest': 'Pas encore de record',
@@ -107,7 +109,7 @@ export default {
   'weapon.sks': 'Lance 39',
   'weapon.asval': 'Murmure 9',
 
-  'share.text': 'Sütçü İmam Escape — {meters} m et {points} points en {diff}, {kills} éliminations, combo de {combo}',
+  'share.text': 'Escape from hell — {meters} m et {points} points en {diff}, {kills} éliminations, combo de {combo}',
   'share.button': 'PARTAGER',
   'share.copied': 'COPIÉ',
 };

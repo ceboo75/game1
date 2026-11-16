@@ -26,6 +26,7 @@ jobs:
           mkdir -p vendor/addons/loaders vendor/addons/utils
           base=https://cdn.jsdelivr.net/npm/three@0.170.0
           curl -fsSL $base/build/three.module.js -o vendor/three.module.js
+          curl -fsSL $base/LICENSE -o vendor/LICENSE-three.txt
           for f in loaders/GLTFLoader.js utils/BufferGeometryUtils.js utils/SkeletonUtils.js; do
             curl -fsSL $base/examples/jsm/$f -o vendor/addons/$f
           done
@@ -57,6 +58,7 @@ jobs:
           mkdir -p vendor/addons/loaders vendor/addons/utils
           base=https://cdn.jsdelivr.net/npm/three@0.170.0
           curl -fsSL $base/build/three.module.js -o vendor/three.module.js
+          curl -fsSL $base/LICENSE -o vendor/LICENSE-three.txt
           for f in loaders/GLTFLoader.js utils/BufferGeometryUtils.js utils/SkeletonUtils.js; do
             curl -fsSL $base/examples/jsm/$f -o vendor/addons/$f
           done
@@ -64,23 +66,23 @@ jobs:
       - name: Copie du jeu dans l'appli (avec les modèles 3D du dossier assets)
         run: |
           mkdir -p android/app/src/main/assets/www
-          cp -r index.html style.css ui.css src vendor assets android/app/src/main/assets/www/
+          cp -r index.html style.css ui.css hell.css src vendor assets android/app/src/main/assets/www/
 
       - name: Fabrication de l'APK
-        run: gradle -p android assembleRelease -PversionCode=${{ github.run_number }} --no-daemon --stacktrace
+        run: gradle -p android assembleRelease -PversionCode=$(date +%s) --no-daemon --stacktrace
 
       - name: Nom du fichier
-        run: cp android/app/build/outputs/apk/release/app-release.apk sutcu-imam-escape.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk escape-from-hell.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: sutcu-imam-escape-apk
-          path: sutcu-imam-escape.apk
+          name: escape-from-hell-apk
+          path: escape-from-hell.apk
 
       - name: Publication dans les Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "test-${{ github.run_number }}" sutcu-imam-escape.apk \
-            --title "Sütçü İmam Escape - version de test ${{ github.run_number }}" \
-            --notes "APK Android de test. Télécharge sutcu-imam-escape.apk sur le téléphone puis ouvre-le pour l'installer."
+          gh release create "test-${{ github.run_number }}" escape-from-hell.apk \
+            --title "Escape from hell - version de test ${{ github.run_number }}" \
+            --notes "APK Android de test. Télécharge escape-from-hell.apk sur le téléphone puis ouvre-le pour l'installer."

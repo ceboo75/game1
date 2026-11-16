@@ -1,9 +1,15 @@
 {
-  "name": "sutcu-imam-escape",
+  "name": "escape-from-hell",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node tests/run.mjs",
-    "smoke": "node tests/smoke.mjs"
+    "smoke": "node tests/smoke.mjs",
+    "prepare": "node tools/prepare.mjs",
+    "start": "node tools/serve.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2",
+    "three": "0.170.0"
   }
 }

@@ -12,7 +12,7 @@ const LAYOUT = [
   ['audio', ['volMusic', 'volSfx']],
 ];
 
-let screen = null;
+let screen = null, returnFocus = null;
 
 /** Taille et opacité des boutons tactiles (variables lues par ui.css). */
 export function applyTouch() {

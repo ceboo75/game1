@@ -74,21 +74,21 @@ export const BOSSES = {
 // ------------------------------------------------------------------ thèmes visuels
 export const THEMES = {
   villa: {
-    wall: { base: '#d6c9b2', low: '#b39f80', dado: '#6b5a44', plinth: '#3a2e22', seam: '#c4b498' },
+    wall: { base: '#756155', low: '#3d3029', dado: '#d56c32', plinth: '#211914', seam: '#4d3b30' },
     floor: { type: 'parquet', a: '#6a4528', b: '#57391f', line: '#2e1d10' },
     ceiling: 0x4a423a, cover: { color: 0x6a4030, w: 1.7, h: 0.9 },
-    neon: [0xffb347, 0x22e4ff], lights: [0xffb070, 0xffd8a8, 0x7ad8ff],
+    neon: [0xff642c, 0xffbf68], lights: [0xff783e, 0xffb06a, 0xff482b],
     window: 'garden', hemi: [0xffe6c8, 0x2a1c14, 1.25], fog: 0x14100c,
   },
   hotel: {
-    wall: { base: '#e2d4bc', low: '#8e2a3a', dado: '#c9a04a', plinth: '#2a0a10', seam: '#cfbfa4' },
+    wall: { base: '#756273', low: '#432134', dado: '#b67a45', plinth: '#210e19', seam: '#453044' },
     floor: { type: 'carpet', a: '#5a1424', b: '#c9a04a', line: '#3a0c16' },
     ceiling: 0x3a2428, cover: { color: 0xb8903e, w: 1.4, h: 1.0 },
-    neon: [0xff2d78, 0xffcc33], lights: [0xff5a90, 0xffcc70, 0xc060ff],
+    neon: [0xff2854, 0xffa643], lights: [0xff5a90, 0xffcc70, 0xc060ff],
     window: 'city', hemi: [0xffd0dc, 0x200810, 1.2], fog: 0x16080c,
   },
   tower: {
-    wall: { base: '#c2cad4', low: '#a2acb8', dado: '#5a6672', plinth: '#2a3038', seam: '#b0bac4' },
+    wall: { base: '#647784', low: '#354957', dado: '#60b8c1', plinth: '#1c2933', seam: '#3c515f' },
     floor: { type: 'tiles', a: '#3e4a58', b: '#36414e', line: '#1c232c' },
     ceiling: 0x323a44, cover: { color: 0xdde2e8, w: 1.7, h: 0.95 },
     neon: [0x22e4ff, 0xe8f4ff], lights: [0xa8ecff, 0xffffff, 0x6a9cff],

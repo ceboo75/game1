@@ -8,6 +8,7 @@ import { t } from './core/i18n.js';
 import { renderer, camera, gunCam, fx, applyFov, render } from './game/view.js';
 import { update, idleCamera, zoomNow, hurtPlayer, alertNear, hitEnemy } from './game/combat.js';
 import { updateViewmodel } from './game/viewmodel.js';
+import { updateEmbers } from './game/embers.js';
 import { updateAmbience } from './game/ambience.js';
 import { newRun, startRun, updateRun } from './game/run.js';
 import { applyQuality, frameGate, perfFrame, perfState } from './game/perf.js';
@@ -25,7 +26,7 @@ window.game = game; // accès console pour le débogage
 
 // Ce qui tourne à chaque image de jeu, dans l'ordre : le combat, la fuite (salles, portes, compte à rebours),
 // puis ce qui en découle. Un module chargé plus tard peut s'ajouter à la liste (game.systems.push).
-game.systems = [update, updateRun, updateViewmodel, updateAmbience];
+game.systems = [update, updateRun, updateViewmodel, updateAmbience, updateEmbers];
 function tick(dt) {
   for (const system of game.systems) system(dt);
 }
@@ -45,7 +46,7 @@ game.debug = {
    * Mesure le temps de chaque image et vérifie que le monde ne grossit pas avec la distance.
    */
   selfTest: (rooms = 200) => {
-    const report = { rooms: 0, kills: 0, maxFrameMs: 0, slowFrames: [], problems: [], memory: {} };
+    const report = { rooms: 0, kills: 0, maxFrameMs: 0, maxCalls: 0, slowFrames: [], problems: [], memory: {} };
     game.debug.start('normal', 1);
     const W = game.world, p = game.player;
     const snapshot = () => ({
@@ -59,6 +60,7 @@ game.debug = {
       render();
       const ms = performance.now() - t0;
       report.maxFrameMs = Math.max(report.maxFrameMs, ms);
+      report.maxCalls = Math.max(report.maxCalls, perfState().calls);
       if (ms > 50) report.slowFrames.push(`salle ${game.run.room} : ${Math.round(ms)} ms`);
     };
     for (let i = 0; i < rooms && game.state === 'play'; i++) {
@@ -74,6 +76,7 @@ game.debug = {
       if (game.run.room !== i + 1) { report.problems.push(`salle ${i + 1} : pas entré (salle ${game.run.room})`); break; }
       report.rooms++;
       if (i === 10) report.memory.room10 = snapshot();
+      if (i === 60) report.memory.room60 = snapshot();
     }
     report.memory.end = snapshot();
     report.distance = Math.floor(game.run.distance);

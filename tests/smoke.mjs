@@ -31,7 +31,7 @@ let code = 1;
 try {
   // délais larges : le rendu logiciel de GitHub Actions est très lent
   const open = async address => {
-    const p = await browser.newPage({ viewport: { width: 915, height: 412 } });
+    const p = await browser.newPage({ viewport: { width: 480, height: 270 } });
     p.on('pageerror', e => errors.push(`erreur de page : ${e.message}`));
     p.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(`console : ${m.text()}`); });
     await p.goto(address, { waitUntil: 'domcontentloaded', timeout: 180000 });
@@ -43,11 +43,15 @@ try {
   const report = await page.evaluate(() => window.game.debug.selfTest(200));
   errors.push(...report.problems);
   const m = report.memory;
+  const warmed = m.room60 || m.room10;
   console.log(`${report.rooms} salles traversées, ${report.distance} m, ${report.kills} éliminations, arme finale ${report.weapon}`);
   console.log(`mémoire : ${m.room10.geometries} géométries en salle 10, ${m.end.geometries} à la fin ; ${m.end.calls} appels d'affichage`);
   if (report.rooms !== 200) errors.push(`200 salles attendues, ${report.rooms} traversées`);
   if (m.end.rooms !== m.room10.rooms) errors.push(`le monde grossit : ${m.room10.rooms} puis ${m.end.rooms} salles chargées`);
-  if (m.end.textures !== m.room10.textures) errors.push(`textures : ${m.room10.textures} puis ${m.end.textures}`);
+  if (m.end.textures !== warmed.textures) errors.push(`textures après stabilisation : ${warmed.textures} puis ${m.end.textures}`);
+  if (m.end.geometries !== warmed.geometries) errors.push(`géométries après stabilisation : ${warmed.geometries} puis ${m.end.geometries}`);
+  console.log(`pic : ${report.maxCalls} appels ; mémoire stabilisée : ${warmed.geometries}/${m.end.geometries} géométries, ${warmed.textures}/${m.end.textures} textures`);
+  if (report.maxCalls > 150) errors.push(`budget de rendu dépassé : ${report.maxCalls}`);
 
   await page.close(); // la première page tourne encore : on la ferme pour ne pas ralentir la suivante
 

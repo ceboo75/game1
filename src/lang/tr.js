@@ -1,7 +1,9 @@
 // Türkçe metinler. Silah adları tüm dillerde aynı kalan özel adlardır (bkz. fr.js).
 export default {
-  'menu.subtitle': 'Kaç. Asla durma.',
-  'menu.tap': 'Başlamak için ekrana dokun',
+  'menu.eyebrow': "SONSUZ KAÇIŞ / İKİNCİ ŞANS YOK",
+  'menu.controls': "PC: WASD · Bakmak için sürükle · Boşluk: ateş · E: nişan",
+  'menu.subtitle': "Yirmi saniye. Bir kapı. Geri dönüş yok.",
+  'menu.tap': "CEHENNEME GİR",
   'menu.loading': 'Modeller yükleniyor… %{n}',
   'menu.best': 'Rekor {points} puan · {meters} m',
   'menu.noBest': 'Henüz rekor yok',
@@ -108,7 +110,7 @@ export default {
   'boss.varga.title': 'Patron',
   'boss.phase2': '{name} · ikinci raunt',
 
-  'share.text': 'Sütçü İmam Escape — {diff} zorluğunda {meters} m ve {points} puan, {kills} leş, {combo} kombo',
+  'share.text': 'Escape from hell — {diff} zorluğunda {meters} m ve {points} puan, {kills} leş, {combo} kombo',
   'share.button': 'PAYLAŞ',
   'share.copied': 'KOPYALANDI',
 };

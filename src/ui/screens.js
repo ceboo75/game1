@@ -41,6 +41,7 @@ function renderMenu() {
   for (const id of DIFF_ORDER) {
     const d = DIFFICULTIES[id], best = save.best(id);
     const b = document.createElement('button');
+    b.setAttribute('aria-pressed', String(id === game.diff.id));
     b.className = `chip ${id}` + (id === game.diff.id ? ' sel' : '');
     b.innerHTML = '<b></b><small></small>';
     b.firstChild.textContent = diffName(d).toUpperCase();
@@ -113,7 +114,8 @@ export function initScreens() {
   game.systems.push(updateTutorial, updateStory);
   // l'écran titre lance la partie au moindre toucher, sauf sur ses boutons
   document.querySelector('.menuExtras').addEventListener('pointerup', e => e.stopPropagation());
-  screens.menu.addEventListener('pointerup', () => start(false));
+  screens.menu.addEventListener('pointerup', e => { if (!e.target.closest('#btnStart')) start(false); });
+  $('btnStart').addEventListener('click', () => start(false));
   $('btnDaily').addEventListener('click', () => start(true));
   $('btnResume').addEventListener('click', () => { audioOn(); resume(); });
   $('btnQuit').addEventListener('click', () => endRun());
